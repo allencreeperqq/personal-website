@@ -37,3 +37,7 @@
 - 調整 `blog/posts/template.md` 與 `blog/standard.md`：補上圖片插入範例與使用規範。
 - 調整 `blog/post.html`：修正圖片相對路徑解析基準，避免文章可讀但圖片載入失敗。
 - 調整 `index.html`：在原模板區域新增「全部貼文列表」，以列表式顯示所有貼文。
+- 調整 `index.html`：將「全部貼文列表」改為 issue 風格卡片條列，含摘要、日期與分類標籤。
+- 調整 `index.html` 與 `blog/post.html`：升級為更有層次的暗色多彩主題（藍青綠與靛色漸層）。
+- 調整 `index.html`：首頁貼文列表優先顯示文章 title（front matter 或內文標題），避免顯示 `.md` 檔名。
+- 調整 `blog/post.html`：強化 front matter 解析，避免文章頁顯示 `--- ... ---` 內的 title/date 等欄位文字。

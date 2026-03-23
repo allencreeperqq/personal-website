@@ -6,12 +6,17 @@
   <title>Blog 文章</title>
   <style>
     :root {
-      --bg: #0b1324;
+      --bg: #090f1d;
+      --bg-2: #122544;
+      --bg-3: #1a1740;
       --panel: rgba(15, 23, 42, 0.86);
+      --panel-2: rgba(30, 41, 59, 0.72);
       --text: #e2e8f0;
-      --muted: #94a3b8;
+      --muted: #9fb0c6;
       --border: rgba(148, 163, 184, 0.3);
       --accent: #38bdf8;
+      --accent-2: #22d3ee;
+      --accent-3: #818cf8;
     }
 
     * { box-sizing: border-box; }
@@ -23,8 +28,9 @@
       font-family: "Segoe UI", "Noto Sans TC", sans-serif;
       color: var(--text);
       background:
-        linear-gradient(160deg, rgba(11, 19, 36, 0.88), rgba(19, 42, 69, 0.88)),
-        radial-gradient(circle at 20% 15%, rgba(56, 189, 248, 0.16), transparent 36%),
+        linear-gradient(140deg, rgba(9, 15, 29, 0.9), rgba(18, 37, 68, 0.84), rgba(26, 23, 64, 0.82)),
+        radial-gradient(circle at 18% 16%, rgba(56, 189, 248, 0.2), transparent 36%),
+        radial-gradient(circle at 86% 84%, rgba(129, 140, 248, 0.2), transparent 38%),
         var(--bg);
     }
 
@@ -33,7 +39,9 @@
       margin: 0 auto;
       border: 1px solid var(--border);
       border-radius: 16px;
-      background: var(--panel);
+      background:
+        linear-gradient(165deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.88)),
+        var(--panel);
       padding: 24px;
       box-shadow: 0 24px 40px rgba(0, 0, 0, 0.35);
     }
@@ -83,8 +91,8 @@
     }
 
     .post-body code {
-      background: rgba(30, 41, 59, 0.8);
-      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.86), rgba(30, 27, 75, 0.78));
+      border: 1px solid rgba(129, 140, 248, 0.32);
       border-radius: 6px;
       padding: 0.1em 0.35em;
       font-family: Consolas, "Courier New", monospace;
@@ -106,9 +114,9 @@
       height: auto;
       margin: 1rem auto;
       border-radius: 12px;
-      border: 1px solid rgba(148, 163, 184, 0.3);
-      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
-      background: rgba(2, 6, 23, 0.45);
+      border: 1px solid rgba(94, 234, 212, 0.45);
+      box-shadow: 0 14px 26px rgba(34, 211, 238, 0.16);
+      background: linear-gradient(145deg, rgba(8, 47, 73, 0.26), rgba(30, 41, 59, 0.6));
     }
 
     .error {
@@ -137,8 +145,13 @@
     }
 
     function parseFrontMatter(text) {
-      const match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-      if (!match) return { meta: {}, body: text };
+      const normalized = String(text)
+        .replace(/^\uFEFF/, "")
+        .replace(/\r\n/g, "\n")
+        .replace(/^\s+/, "");
+
+      const match = normalized.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+      if (!match) return { meta: {}, body: normalized };
 
       const meta = {};
       const lines = match[1].split(/\r?\n/);

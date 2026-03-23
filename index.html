@@ -7,14 +7,20 @@
   <title>自我介紹</title>
   <style>
     :root {
-      --bg-1: #0b1324;
-      --bg-2: #132a45;
+      --bg-1: #090f1d;
+      --bg-2: #122544;
+      --bg-3: #1a1740;
       --panel: rgba(15, 23, 42, 0.82);
+      --panel-2: rgba(30, 41, 59, 0.74);
       --text: #e2e8f0;
-      --muted: #94a3b8;
+      --muted: #9fb0c6;
       --accent: #38bdf8;
       --accent-2: #0ea5e9;
+      --accent-3: #22d3ee;
+      --accent-4: #34d399;
+      --accent-violet: #818cf8;
       --border: rgba(148, 163, 184, 0.3);
+      --border-strong: rgba(94, 234, 212, 0.32);
     }
 
     * { box-sizing: border-box; }
@@ -37,9 +43,10 @@
       font-family: "Segoe UI", "Noto Sans TC", sans-serif;
       color: var(--text);
       background:
-        linear-gradient(145deg, rgba(11, 19, 36, 0.75), rgba(19, 42, 69, 0.75)),
-        radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.15), transparent 40%),
-        radial-gradient(circle at 80% 80%, rgba(14, 165, 233, 0.15), transparent 35%),
+        linear-gradient(140deg, rgba(9, 15, 29, 0.88), rgba(18, 37, 68, 0.84) 45%, rgba(26, 23, 64, 0.82)),
+        radial-gradient(circle at 14% 16%, rgba(56, 189, 248, 0.2), transparent 36%),
+        radial-gradient(circle at 88% 14%, rgba(52, 211, 153, 0.16), transparent 34%),
+        radial-gradient(circle at 80% 82%, rgba(129, 140, 248, 0.2), transparent 38%),
         url("menu-picr2.jpg") center/cover no-repeat;
     }
 
@@ -56,7 +63,9 @@
     .intro-card {
       border: 1px solid var(--border);
       border-radius: 18px;
-      background: var(--panel);
+      background:
+        linear-gradient(165deg, rgba(30, 41, 59, 0.74), rgba(15, 23, 42, 0.86)),
+        var(--panel);
       backdrop-filter: blur(4px);
       box-shadow: 0 24px 45px rgba(0, 0, 0, 0.35);
       padding: 28px;
@@ -66,7 +75,9 @@
     .content-card {
       border: 1px solid var(--border);
       border-radius: 18px;
-      background: var(--panel);
+      background:
+        linear-gradient(165deg, rgba(15, 23, 42, 0.88), rgba(30, 41, 59, 0.72)),
+        var(--panel);
       backdrop-filter: blur(4px);
       box-shadow: 0 24px 45px rgba(0, 0, 0, 0.35);
       padding: 28px;
@@ -76,9 +87,9 @@
     .student-header {
       margin-bottom: 16px;
       padding: 10px 12px;
-      border: 1px solid rgba(148, 163, 184, 0.25);
+      border: 1px solid var(--border-strong);
       border-radius: 10px;
-      background: rgba(2, 6, 23, 0.45);
+      background: linear-gradient(135deg, rgba(8, 47, 73, 0.42), rgba(30, 64, 175, 0.28));
       display: flex;
       justify-content: center;
       align-items: center;
@@ -87,9 +98,12 @@
     .photo-placeholder {
       width: min(100%, 260px);
       aspect-ratio: 1 / 1;
-      border: 2px dashed rgba(125, 211, 252, 0.65);
+      border: 2px dashed rgba(94, 234, 212, 0.75);
       border-radius: 14px;
-      background: rgba(15, 23, 42, 0.55);
+      background:
+        radial-gradient(circle at 22% 22%, rgba(34, 211, 238, 0.2), transparent 44%),
+        radial-gradient(circle at 80% 80%, rgba(129, 140, 248, 0.22), transparent 40%),
+        rgba(15, 23, 42, 0.58);
       display: grid;
       place-items: center;
       color: #dbeafe;
@@ -107,9 +121,9 @@
 
     .intro-box {
       margin-top: 14px;
-      border: 1px solid rgba(148, 163, 184, 0.25);
+      border: 1px solid rgba(94, 234, 212, 0.28);
       border-radius: 10px;
-      background: rgba(2, 6, 23, 0.45);
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.68), rgba(17, 24, 39, 0.72));
       padding: 14px;
       color: var(--muted);
       line-height: 1.7;
@@ -134,9 +148,9 @@
     }
 
     .profile-item {
-      border: 1px solid rgba(148, 163, 184, 0.25);
+      border: 1px solid rgba(125, 211, 252, 0.34);
       border-radius: 10px;
-      background: rgba(2, 6, 23, 0.45);
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.7), rgba(30, 41, 59, 0.55));
       padding: 10px 12px;
       color: #dbeafe;
       line-height: 1.6;
@@ -148,9 +162,9 @@
 
     .intro-text-box {
       margin-top: 14px;
-      border: 1px solid rgba(148, 163, 184, 0.25);
+      border: 1px solid rgba(129, 140, 248, 0.3);
       border-radius: 10px;
-      background: rgba(2, 6, 23, 0.45);
+      background: linear-gradient(145deg, rgba(30, 27, 75, 0.46), rgba(15, 23, 42, 0.7));
       padding: 14px;
     }
 
@@ -174,9 +188,9 @@
 
     .social-box {
       margin-top: 14px;
-      border: 1px solid rgba(148, 163, 184, 0.25);
+      border: 1px solid rgba(52, 211, 153, 0.32);
       border-radius: 10px;
-      background: rgba(2, 6, 23, 0.45);
+      background: linear-gradient(145deg, rgba(6, 78, 59, 0.25), rgba(15, 23, 42, 0.72));
       padding: 14px;
     }
 
@@ -203,7 +217,7 @@
       width: 20px;
       height: 20px;
       flex: 0 0 auto;
-      color: #c4b5fd;
+      color: #a5b4fc;
     }
 
     .hint {
@@ -257,9 +271,9 @@
     }
 
     .content-block {
-      border: 1px solid rgba(148, 163, 184, 0.25);
+      border: 1px solid rgba(125, 211, 252, 0.28);
       border-radius: 12px;
-      background: rgba(2, 6, 23, 0.45);
+      background: linear-gradient(155deg, rgba(15, 23, 42, 0.76), rgba(30, 41, 59, 0.58));
       padding: 16px;
     }
 
@@ -289,9 +303,9 @@
     }
 
     .blog-card {
-      border: 1px solid rgba(148, 163, 184, 0.22);
+      border: 1px solid rgba(129, 140, 248, 0.34);
       border-radius: 10px;
-      background: rgba(15, 23, 42, 0.55);
+      background: linear-gradient(145deg, rgba(30, 27, 75, 0.42), rgba(15, 23, 42, 0.66));
       padding: 12px;
     }
 
@@ -332,23 +346,80 @@
 
     .all-post-list {
       margin: 10px 0 0;
-      padding-left: 1.2rem;
-      color: #cbd5e1;
-      line-height: 1.8;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
     }
 
-    .all-post-list li {
-      margin: 4px 0;
+    .all-post-item {
+      border: 1px solid rgba(125, 211, 252, 0.3);
+      border-radius: 10px;
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.72), rgba(17, 24, 39, 0.62));
+      padding: 12px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+      transition: border-color 0.2s ease, transform 0.2s ease;
     }
 
-    .all-post-list a {
+    .all-post-item:hover {
+      border-color: rgba(94, 234, 212, 0.56);
+      box-shadow: 0 10px 22px rgba(34, 211, 238, 0.16);
+      transform: translateY(-1px);
+    }
+
+    .all-post-main {
+      min-width: 0;
+    }
+
+    .all-post-title {
+      display: inline-block;
       color: #7dd3fc;
       text-decoration: none;
       border-bottom: 1px solid transparent;
+      font-weight: 600;
+      line-height: 1.45;
     }
 
-    .all-post-list a:hover {
+    .all-post-title:hover {
       border-bottom-color: #7dd3fc;
+    }
+
+    .all-post-sub {
+      margin-top: 6px;
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      line-height: 1.65;
+    }
+
+    .all-post-side {
+      display: grid;
+      justify-items: end;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .all-post-date {
+      color: #bfdbfe;
+      font-size: 0.84rem;
+    }
+
+    .all-post-tag {
+      font-size: 0.82rem;
+      color: #dbeafe;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(94, 234, 212, 0.46);
+      background: linear-gradient(135deg, rgba(14, 116, 144, 0.28), rgba(67, 56, 202, 0.26));
+    }
+
+    .all-post-note {
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      line-height: 1.65;
+      padding: 8px 2px;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -380,6 +451,14 @@
       .back-link {
         width: 100%;
         min-width: 0;
+      }
+
+      .all-post-item {
+        grid-template-columns: 1fr;
+      }
+
+      .all-post-side {
+        justify-items: start;
       }
     }
   </style>
@@ -486,7 +565,8 @@
     const BLOG_INDEX_PATH = "blog/posts/index.json";
 
     function parseFrontMatter(text) {
-      const match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+      const normalized = String(text).replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+      const match = normalized.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
       if (!match) return { meta: {}, body: text };
 
       const meta = {};
@@ -500,6 +580,21 @@
       }
 
       return { meta, body: match[2] };
+    }
+
+    function getBodyTitle(body) {
+      const normalized = String(body || "").replace(/\r\n/g, "\n");
+      const lines = normalized.split("\n");
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (line.startsWith("# ")) {
+          return line.slice(2).trim();
+        }
+        if (line.startsWith("## ")) {
+          return line.slice(3).trim();
+        }
+      }
+      return "";
     }
 
     function getExcerpt(meta, body) {
@@ -536,9 +631,10 @@
 
         const markdown = await response.text();
         const { meta, body } = parseFrontMatter(markdown);
+        const displayTitle = meta.title || getBodyTitle(body) || "未命名文章";
         posts.push({
           date: meta.date || "0000-00-00",
-          title: meta.title || safeName,
+          title: displayTitle,
           category: meta.category || "未分類",
           excerpt: getExcerpt(meta, body),
           url: `blog/post.html?file=${encodeURIComponent(safeName)}`
@@ -582,6 +678,7 @@
         container.appendChild(warn);
 
         const warnItem = document.createElement("li");
+        warnItem.className = "all-post-note";
         warnItem.textContent = `部分文章尚未讀取成功：${missingFiles.join(", ")}`;
         listContainer.appendChild(warnItem);
       }
@@ -593,6 +690,7 @@
         container.appendChild(empty);
 
         const emptyItem = document.createElement("li");
+        emptyItem.className = "all-post-note";
         emptyItem.textContent = "目前沒有可顯示的文章。";
         listContainer.appendChild(emptyItem);
         return;
@@ -616,17 +714,40 @@
         container.appendChild(node);
 
         const item = document.createElement("li");
+        item.className = "all-post-item";
+
+        const main = document.createElement("div");
+        main.className = "all-post-main";
+
         const itemLink = document.createElement("a");
+        itemLink.className = "all-post-title";
         itemLink.href = validUrl ? post.url : "#";
         itemLink.textContent = post.title || "未命名文章";
         if (!validUrl) {
           itemLink.textContent = `${itemLink.textContent}（連結待補）`;
         }
 
-        const meta = document.createElement("span");
-        meta.textContent = ` - ${post.date || "未設定日期"} | ${post.category || "未分類"}`;
-        item.appendChild(itemLink);
-        item.appendChild(meta);
+        const sub = document.createElement("p");
+        sub.className = "all-post-sub";
+        sub.textContent = post.excerpt || "尚無摘要";
+
+        const side = document.createElement("div");
+        side.className = "all-post-side";
+
+        const date = document.createElement("span");
+        date.className = "all-post-date";
+        date.textContent = post.date || "未設定日期";
+
+        const tag = document.createElement("span");
+        tag.className = "all-post-tag";
+        tag.textContent = post.category || "未分類";
+
+        main.appendChild(itemLink);
+        main.appendChild(sub);
+        side.appendChild(date);
+        side.appendChild(tag);
+        item.appendChild(main);
+        item.appendChild(side);
         listContainer.appendChild(item);
       });
     }
