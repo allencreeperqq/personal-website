@@ -41,3 +41,8 @@
 - 調整 `index.html` 與 `blog/post.html`：升級為更有層次的暗色多彩主題（藍青綠與靛色漸層）。
 - 調整 `index.html`：首頁貼文列表優先顯示文章 title（front matter 或內文標題），避免顯示 `.md` 檔名。
 - 調整 `blog/post.html`：強化 front matter 解析，避免文章頁顯示 `--- ... ---` 內的 title/date 等欄位文字。
+- 調整 `blog/post.html`：新增 Markdown 表格語法支援（`| ... |`），修正特定文章無法正常顯示表格的問題。
+- 調整 `blog/post.html`：新增 PDF 內嵌預覽支援，可在 Markdown 使用 `!pdf[標題](路徑)` 直接顯示 PDF。
+- 調整 `blog/standard.md` 與 `blog/posts/template.md`：補充 PDF 預覽寫法與範例。
+- 調整 `blog/post.html`：放大 PDF 預覽框高度，提升單頁 PDF 閱讀可視範圍。
+- 調整 `blog/post.html`：新增 Markdown 引用語法（`>`）支援，修正文章內引用段落未轉換顯示的問題。

@@ -90,6 +90,49 @@
       padding-left: 1.2rem;
     }
 
+    .post-body blockquote {
+      margin: 0.95rem 0;
+      padding: 0.7rem 0.9rem;
+      border-left: 3px solid rgba(56, 189, 248, 0.78);
+      border-radius: 0 10px 10px 0;
+      background: linear-gradient(120deg, rgba(8, 47, 73, 0.3), rgba(30, 41, 59, 0.5));
+      color: #dbeafe;
+    }
+
+    .post-body .md-table-wrap {
+      margin: 1rem 0;
+      overflow-x: auto;
+    }
+
+    .post-body table.md-table {
+      width: 100%;
+      min-width: 520px;
+      border-collapse: collapse;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 10px;
+      background: linear-gradient(150deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.7));
+    }
+
+    .post-body table.md-table th,
+    .post-body table.md-table td {
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      padding: 0.5rem 0.65rem;
+      vertical-align: top;
+      text-align: left;
+      font-size: 0.95rem;
+      line-height: 1.55;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    .post-body table.md-table thead {
+      background: linear-gradient(135deg, rgba(8, 47, 73, 0.58), rgba(49, 46, 129, 0.46));
+    }
+
+    .post-body table.md-table tbody tr:nth-child(even) {
+      background: rgba(30, 41, 59, 0.36);
+    }
+
     .post-body code {
       background: linear-gradient(145deg, rgba(30, 41, 59, 0.86), rgba(30, 27, 75, 0.78));
       border: 1px solid rgba(129, 140, 248, 0.32);
@@ -117,6 +160,39 @@
       border: 1px solid rgba(94, 234, 212, 0.45);
       box-shadow: 0 14px 26px rgba(34, 211, 238, 0.16);
       background: linear-gradient(145deg, rgba(8, 47, 73, 0.26), rgba(30, 41, 59, 0.6));
+    }
+
+    .post-body .md-pdf {
+      margin: 1rem 0;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 12px;
+      overflow: hidden;
+      background: linear-gradient(145deg, rgba(8, 47, 73, 0.2), rgba(30, 41, 59, 0.65));
+    }
+
+    .post-body .md-pdf-title {
+      padding: 0.55rem 0.75rem;
+      font-size: 0.95rem;
+      color: #bfdbfe;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+      background: linear-gradient(130deg, rgba(30, 41, 59, 0.66), rgba(30, 27, 75, 0.56));
+    }
+
+    .post-body .md-pdf-frame {
+      width: 100%;
+      min-height: 620px;
+      height: clamp(620px, 88vh, 1280px);
+      border: 0;
+      background: #0f172a;
+    }
+
+    .post-body .md-pdf-fallback {
+      margin: 0;
+      padding: 0.65rem 0.75rem;
+      color: #cbd5e1;
+      border-top: 1px solid rgba(148, 163, 184, 0.24);
+      font-size: 0.92rem;
+      background: rgba(15, 23, 42, 0.65);
     }
 
     .error {
@@ -209,12 +285,135 @@
       return rendered;
     }
 
+    function renderPdfEmbedLine(rawLine, currentFile) {
+      const line = String(rawLine || "").trim();
+
+      const customMatch = line.match(/^!pdf(?:\[([^\]]*)\])?\(([^)]+)\)$/i);
+      const linkMatch = line.match(/^\[([^\]]+)\]\(([^)]+\.pdf(?:[#?][^)]+)?)\)$/i);
+      let title = "";
+      let url = "";
+
+      if (customMatch) {
+        title = String(customMatch[1] || "PDF 預覽").trim() || "PDF 預覽";
+        url = customMatch[2];
+      } else if (linkMatch) {
+        title = String(linkMatch[1] || "PDF 預覽").trim() || "PDF 預覽";
+        url = linkMatch[2];
+      } else {
+        return "";
+      }
+
+      const resolved = resolveContentUrl(url, currentFile);
+      if (!resolved) return "";
+
+      const safeTitle = escapeHtml(title);
+      const safeUrl = escapeHtml(resolved);
+
+      return [
+        '<section class="md-pdf">',
+        `  <div class="md-pdf-title">${safeTitle}</div>`,
+        `  <iframe class="md-pdf-frame" src="${safeUrl}" title="${safeTitle}" loading="lazy"></iframe>`,
+        '  <p class="md-pdf-fallback">',
+        `    若無法預覽，請改用<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">新分頁開啟 PDF</a>。`,
+        "  </p>",
+        "</section>"
+      ].join("\n");
+    }
+
+    function isTableRowLine(rawLine) {
+      const line = String(rawLine || "").trim();
+      if (!line.startsWith("|")) return false;
+      const pipeCount = (line.match(/\|/g) || []).length;
+      return pipeCount >= 2;
+    }
+
+    function splitTableCells(rawLine) {
+      const line = String(rawLine || "").trim();
+      return line
+        .replace(/^\|/, "")
+        .replace(/\|$/, "")
+        .split("|")
+        .map((cell) => cell.trim());
+    }
+
+    function isTableSeparatorLine(rawLine) {
+      if (!isTableRowLine(rawLine)) return false;
+      const cells = splitTableCells(rawLine);
+      if (!cells.length) return false;
+      return cells.every((cell) => {
+        const marker = cell.replace(/\s+/g, "");
+        return /^:?-{3,}:?$/.test(marker);
+      });
+    }
+
+    function buildTableHtml(tableLines, currentFile) {
+      if (!tableLines.length) return "";
+
+      let headerCells = null;
+      let bodyRows = [];
+
+      if (tableLines.length >= 2 && isTableSeparatorLine(tableLines[1])) {
+        headerCells = splitTableCells(tableLines[0]);
+        bodyRows = tableLines.slice(2).map(splitTableCells);
+      } else {
+        bodyRows = tableLines.map(splitTableCells);
+      }
+
+      let colCount = 0;
+      if (headerCells) colCount = Math.max(colCount, headerCells.length);
+      for (const row of bodyRows) colCount = Math.max(colCount, row.length);
+      if (colCount === 0) return "";
+
+      const normalizeRow = (row) => {
+        const next = row.slice();
+        while (next.length < colCount) next.push("");
+        return next;
+      };
+
+      let html = '<div class="md-table-wrap"><table class="md-table">';
+
+      if (headerCells) {
+        const header = normalizeRow(headerCells)
+          .map((cell) => `<th>${renderInlineMarkdown(cell, currentFile)}</th>`)
+          .join("");
+        html += `<thead><tr>${header}</tr></thead>`;
+      }
+
+      if (bodyRows.length) {
+        const rows = bodyRows
+          .map((row) => {
+            const cells = normalizeRow(row)
+              .map((cell) => `<td>${renderInlineMarkdown(cell, currentFile)}</td>`)
+              .join("");
+            return `<tr>${cells}</tr>`;
+          })
+          .join("");
+        html += `<tbody>${rows}</tbody>`;
+      }
+
+      html += "</table></div>";
+      return html;
+    }
+
     function markdownToHtml(markdown, currentFile) {
       const lines = markdown.replace(/\r\n/g, "\n").split("\n");
       const html = [];
       let inList = false;
+      let inQuote = false;
+      let quoteLines = [];
 
-      for (const rawLine of lines) {
+      const flushQuote = () => {
+        if (!inQuote) return;
+        const content = quoteLines
+          .map((entry) => renderInlineMarkdown(entry, currentFile))
+          .join("<br>");
+        html.push(`<blockquote>${content}</blockquote>`);
+        inQuote = false;
+        quoteLines = [];
+      };
+
+      for (let i = 0; i < lines.length; i += 1) {
+        const rawLine = lines[i];
         const line = rawLine.trim();
 
         if (!line) {
@@ -222,6 +421,51 @@
             html.push("</ul>");
             inList = false;
           }
+          flushQuote();
+          continue;
+        }
+
+        const quoteMatch = rawLine.match(/^\s*>\s?(.*)$/);
+        if (quoteMatch) {
+          if (inList) {
+            html.push("</ul>");
+            inList = false;
+          }
+          if (!inQuote) {
+            inQuote = true;
+            quoteLines = [];
+          }
+          quoteLines.push(quoteMatch[1]);
+          continue;
+        }
+
+        flushQuote();
+
+        if (isTableRowLine(rawLine)) {
+          if (inList) {
+            html.push("</ul>");
+            inList = false;
+          }
+
+          const tableLines = [];
+          while (i < lines.length && isTableRowLine(lines[i])) {
+            tableLines.push(lines[i].trim());
+            i += 1;
+          }
+
+          const tableHtml = buildTableHtml(tableLines, currentFile);
+          if (tableHtml) html.push(tableHtml);
+          i -= 1;
+          continue;
+        }
+
+        const pdfEmbedHtml = renderPdfEmbedLine(rawLine, currentFile);
+        if (pdfEmbedHtml) {
+          if (inList) {
+            html.push("</ul>");
+            inList = false;
+          }
+          html.push(pdfEmbedHtml);
           continue;
         }
 
@@ -269,6 +513,7 @@
       }
 
       if (inList) html.push("</ul>");
+      flushQuote();
       return html.join("\n");
     }
 

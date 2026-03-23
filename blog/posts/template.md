@@ -17,4 +17,6 @@ excerpt: 這裡寫 1~2 句摘要，會顯示在首頁卡片。
 
 ![圖片說明](images/example.png)
 
+!pdf[文件預覽標題](pdf/example.pdf)
+
 [外部連結文字](https://example.com)
