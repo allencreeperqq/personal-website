@@ -10,8 +10,8 @@
       --bg-1: #090f1d;
       --bg-2: #122544;
       --bg-3: #1a1740;
-      --panel: rgba(15, 23, 42, 0.82);
-      --panel-2: rgba(30, 41, 59, 0.74);
+      --panel: rgba(15, 23, 42, 0.52);
+      --panel-2: rgba(30, 41, 59, 0.48);
       --text: #e2e8f0;
       --muted: #9fb0c6;
       --accent: #38bdf8;
@@ -43,11 +43,11 @@
       font-family: "Segoe UI", "Noto Sans TC", sans-serif;
       color: var(--text);
       background:
-        linear-gradient(140deg, rgba(9, 15, 29, 0.88), rgba(18, 37, 68, 0.84) 45%, rgba(26, 23, 64, 0.82)),
-        radial-gradient(circle at 14% 16%, rgba(56, 189, 248, 0.2), transparent 36%),
-        radial-gradient(circle at 88% 14%, rgba(52, 211, 153, 0.16), transparent 34%),
-        radial-gradient(circle at 80% 82%, rgba(129, 140, 248, 0.2), transparent 38%),
-        url("menu-picr2.jpg") center/cover no-repeat;
+        linear-gradient(140deg, rgba(9, 15, 29, 0.12), rgba(18, 37, 68, 0.09) 45%, rgba(26, 23, 64, 0.08)),
+        radial-gradient(circle at 14% 16%, rgba(56, 189, 248, 0.04), transparent 36%),
+        radial-gradient(circle at 88% 14%, rgba(52, 211, 153, 0.03), transparent 34%),
+        radial-gradient(circle at 80% 82%, rgba(129, 140, 248, 0.04), transparent 38%),
+        url("blog/picture/bg2.png?v=20260323e") center/cover no-repeat fixed;
     }
 
     .page-layout {
@@ -64,7 +64,7 @@
       border: 1px solid var(--border);
       border-radius: 18px;
       background:
-        linear-gradient(165deg, rgba(30, 41, 59, 0.74), rgba(15, 23, 42, 0.86)),
+        linear-gradient(165deg, rgba(30, 41, 59, 0.5), rgba(15, 23, 42, 0.6)),
         var(--panel);
       backdrop-filter: blur(4px);
       box-shadow: 0 24px 45px rgba(0, 0, 0, 0.35);
@@ -76,7 +76,7 @@
       border: 1px solid var(--border);
       border-radius: 18px;
       background:
-        linear-gradient(165deg, rgba(15, 23, 42, 0.88), rgba(30, 41, 59, 0.72)),
+        linear-gradient(165deg, rgba(15, 23, 42, 0.58), rgba(30, 41, 59, 0.46)),
         var(--panel);
       backdrop-filter: blur(4px);
       box-shadow: 0 24px 45px rgba(0, 0, 0, 0.35);
@@ -98,7 +98,7 @@
     .photo-placeholder {
       width: min(100%, 260px);
       aspect-ratio: 1 / 1;
-      border: 2px dashed rgba(94, 234, 212, 0.75);
+      border: 2px solid rgba(94, 234, 212, 0.75);
       border-radius: 14px;
       background:
         radial-gradient(circle at 22% 22%, rgba(34, 211, 238, 0.2), transparent 44%),
@@ -110,7 +110,16 @@
       font-size: 0.95rem;
       letter-spacing: 0.02em;
       text-align: center;
-      padding: 10px;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .photo-placeholder img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
     }
 
     h1 {
@@ -422,6 +431,75 @@
       padding: 8px 2px;
     }
 
+    .photo-credit {
+      position: fixed;
+      right: 12px;
+      bottom: 10px;
+      margin: 0;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      background: rgba(2, 6, 23, 0.62);
+      color: #cbd5e1;
+      font-size: 0.76rem;
+      line-height: 1.35;
+      z-index: 95;
+      max-width: min(72vw, 420px);
+      text-align: right;
+    }
+
+    .welcome-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(2, 6, 23, 0.64);
+      backdrop-filter: blur(3px);
+    }
+
+    .welcome-modal[hidden] {
+      display: none;
+    }
+
+    .welcome-modal-card {
+      width: min(92vw, 430px);
+      border: 1px solid rgba(125, 211, 252, 0.62);
+      border-radius: 14px;
+      background: linear-gradient(150deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.88));
+      box-shadow: 0 18px 34px rgba(0, 0, 0, 0.42);
+      padding: 18px 16px;
+      text-align: center;
+    }
+
+    .welcome-modal-title {
+      margin: 0;
+      color: #dbeafe;
+      font-size: 1.08rem;
+      line-height: 1.45;
+    }
+
+    .welcome-modal-actions {
+      margin-top: 14px;
+    }
+
+    .welcome-modal-close {
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      border-radius: 8px;
+      background: rgba(30, 41, 59, 0.8);
+      color: #e2e8f0;
+      padding: 7px 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .welcome-modal-close:hover {
+      border-color: rgba(125, 211, 252, 0.65);
+      color: #bae6fd;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .page-layout {
         animation: none;
@@ -460,17 +538,35 @@
       .all-post-side {
         justify-items: start;
       }
+
+      .photo-credit {
+        right: 8px;
+        bottom: 8px;
+        max-width: 84vw;
+        font-size: 0.72rem;
+      }
     }
   </style>
 </head>
 <body>
+  <section class="welcome-modal" id="welcomeModal" aria-live="polite" aria-label="進站歡迎視窗">
+    <div class="welcome-modal-card">
+      <h2 class="welcome-modal-title">歡迎來到我的部落格</h2>
+      <div class="welcome-modal-actions">
+        <button class="welcome-modal-close" type="button" id="closeWelcomeModal" aria-label="關閉歡迎訊息">開始瀏覽</button>
+      </div>
+    </div>
+  </section>
+
   <main class="page-layout">
     <section class="intro-card">
       <div class="student-header">
-        <div class="photo-placeholder">照片預留區<br />（之後可放你的個人照片）</div>
+        <div class="photo-placeholder">
+          <img src="blog/picture/profile%20pic.PNG" alt="Allen 的個人照片" />
+        </div>
       </div>
 
-      <h1>自我介紹</h1>
+      <h1>最近在做甚麼</h1>
 
       <section class="intro-box">
         <div class="profile-grid">
@@ -483,10 +579,13 @@
       </section>
 
       <section class="intro-text-box">
-        <h2>自我介紹文字</h2>
-        <p>你好，我是 Allen，本名潘宇綸，目前就讀中原大學電機系，從小學時就對電腦很感興趣，國小就開始關注科技圈，國中時加入全校的電腦維修志工團隊，負責全校的電腦營運及維修工作。高中發現自己對軟體比較沒有緣分，所以放棄資工來攻讀電機，但是依然對資安及網路很有興趣，目前正在學習 vibe coding，如果有任何問題或是想要一起玩音樂歡迎找我！</p>
-        <p>更多我的文章：<a href="https://forum.gamer.com.tw/Co.php?bsn=41226&amp;sn=78547" target="_blank" rel="noopener noreferrer">https://forum.gamer.com.tw/Co.php?bsn=41226&amp;sn=78547</a></p>
-        <p><strong>主推：</strong>AMANE KANATA💫</p>
+        <h2>最近在做甚麼</h2>
+        <ul class="intro-list">
+          <li>自動控制社的期末成果發表「自製電吉他 Distortion 效果器」</li>
+          <li>練習「go go maniac」等多首日搖歌曲，當然，也有 BLUES</li>
+          <li>試著在社團活動與讀書與興趣之間找到平衡點</li>
+          <li>嘗試著學點語言，包含英文以及義大利文。</li>
+        </ul>
       </section>
 
       <section class="social-box">
@@ -526,16 +625,13 @@
 
     <section class="content-card">
       <h2 class="content-title">作品與 Blog</h2>
-      <p class="content-subtitle">右側區域預留給你持續更新內容。你可以把新作品、開發紀錄、學習心得都放在這裡。</p>
 
       <div class="content-grid">
         <article class="content-block">
-          <h3>最新作品</h3>
-          <ul>
-            <li>作品標題 A：一句話介紹與連結</li>
-            <li>作品標題 B：技術重點與截圖連結</li>
-            <li>作品標題 C：Demo / GitHub 連結</li>
-          </ul>
+          <h3>自我介紹</h3>
+          <p>你好，我是 Allen，本名潘宇綸，目前就讀中原大學電機系，從小學時就對電腦很感興趣，國小就開始關注科技圈，國中時加入全校的電腦維修志工團隊，負責全校的電腦營運及維修工作。高中發現自己對軟體比較沒有緣分，所以放棄資工來攻讀電機，但是依然對資安及網路很有興趣，目前正在學習 vibe coding，如果有任何問題或是想要一起玩音樂歡迎找我！</p>
+          <p>更多我的文章：<a href="https://forum.gamer.com.tw/Co.php?bsn=41226&amp;sn=78547" target="_blank" rel="noopener noreferrer">https://forum.gamer.com.tw/Co.php?bsn=41226&amp;sn=78547</a></p>
+          <p><strong>主推：</strong>AMANE KANATA💫</p>
         </article>
 
         <article class="content-block">
@@ -563,6 +659,16 @@
 
   <script>
     const BLOG_INDEX_PATH = "blog/posts/index.json";
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const modal = document.getElementById("welcomeModal");
+      const closeBtn = document.getElementById("closeWelcomeModal");
+      if (!modal || !closeBtn) return;
+
+      closeBtn.addEventListener("click", () => {
+        modal.hidden = true;
+      });
+    });
 
     function parseFrontMatter(text) {
       const normalized = String(text).replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
@@ -754,5 +860,7 @@
 
     renderBlogPosts();
   </script>
+
+  <p class="photo-credit">川崎工業區夜景 攝於2025/6/12 作者: 潘宇綸</p>
 </body>
 </html>

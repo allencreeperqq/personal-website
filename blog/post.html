@@ -9,8 +9,8 @@
       --bg: #090f1d;
       --bg-2: #122544;
       --bg-3: #1a1740;
-      --panel: rgba(15, 23, 42, 0.86);
-      --panel-2: rgba(30, 41, 59, 0.72);
+      --panel: rgba(15, 23, 42, 0.56);
+      --panel-2: rgba(30, 41, 59, 0.5);
       --text: #e2e8f0;
       --muted: #9fb0c6;
       --border: rgba(148, 163, 184, 0.3);
@@ -28,10 +28,10 @@
       font-family: "Segoe UI", "Noto Sans TC", sans-serif;
       color: var(--text);
       background:
-        linear-gradient(140deg, rgba(9, 15, 29, 0.9), rgba(18, 37, 68, 0.84), rgba(26, 23, 64, 0.82)),
-        radial-gradient(circle at 18% 16%, rgba(56, 189, 248, 0.2), transparent 36%),
-        radial-gradient(circle at 86% 84%, rgba(129, 140, 248, 0.2), transparent 38%),
-        var(--bg);
+        linear-gradient(140deg, rgba(9, 15, 29, 0.12), rgba(18, 37, 68, 0.09), rgba(26, 23, 64, 0.08)),
+        radial-gradient(circle at 18% 16%, rgba(56, 189, 248, 0.04), transparent 36%),
+        radial-gradient(circle at 86% 84%, rgba(129, 140, 248, 0.04), transparent 38%),
+        url("picture/bg2.png?v=20260323e") center/cover no-repeat fixed;
     }
 
     .post-wrap {
@@ -40,7 +40,7 @@
       border: 1px solid var(--border);
       border-radius: 16px;
       background:
-        linear-gradient(165deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.88)),
+        linear-gradient(165deg, rgba(30, 41, 59, 0.54), rgba(15, 23, 42, 0.62)),
         var(--panel);
       padding: 24px;
       box-shadow: 0 24px 40px rgba(0, 0, 0, 0.35);
@@ -199,6 +199,32 @@
       margin-top: 14px;
       color: #fca5a5;
     }
+
+    .photo-credit {
+      position: fixed;
+      right: 12px;
+      bottom: 10px;
+      margin: 0;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      background: rgba(2, 6, 23, 0.62);
+      color: #cbd5e1;
+      font-size: 0.76rem;
+      line-height: 1.35;
+      z-index: 95;
+      max-width: min(72vw, 420px);
+      text-align: right;
+    }
+
+    @media (max-width: 560px) {
+      .photo-credit {
+        right: 8px;
+        bottom: 8px;
+        max-width: 84vw;
+        font-size: 0.72rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -209,6 +235,8 @@
     <article id="post-body" class="post-body"></article>
     <p id="error-text" class="error" hidden></p>
   </main>
+
+  <p class="photo-credit">川崎工業區夜景 攝於2025/6/12 作者: 潘宇綸</p>
 
   <script>
     function escapeHtml(input) {

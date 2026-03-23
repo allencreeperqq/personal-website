@@ -46,3 +46,16 @@
 - 調整 `blog/standard.md` 與 `blog/posts/template.md`：補充 PDF 預覽寫法與範例。
 - 調整 `blog/post.html`：放大 PDF 預覽框高度，提升單頁 PDF 閱讀可視範圍。
 - 調整 `blog/post.html`：新增 Markdown 引用語法（`>`）支援，修正文章內引用段落未轉換顯示的問題。
+- 調整 `index.html`：新增進站中央歡迎視窗，顯示「歡迎來到我的部落格」，點擊「開始瀏覽」後關閉。
+- 調整 `index.html`：左側個人照片區改為實際載入 `blog/picture/profile pic.PNG` 個人頭像。
+- 調整 `index.html`：首頁背景改為 `blog/picture/bg1.JPEG`，並提高主區塊透明度以淡淡顯示後方背景。
+- 調整 `index.html`：重構背景渲染為固定背景圖層（含快取版本參數），修正部分瀏覽器看不到背景圖片的問題。
+- 調整 `blog/post.html`：文章頁同步套用 `bg1.JPEG` 背景與較高透明度面板，修正文章頁背景未顯示問題。
+- 調整 `index.html` 與 `blog/post.html`：改為 `body` 直接載入 `bg1.JPEG`（並保留淡色遮罩），提升背景顯示穩定性。
+- 調整 `index.html` 與 `blog/post.html`：移除 `body::before` 疊層，改為單一 `body background` 並進一步降低遮罩濃度，提升背景可見度。
+- 調整 `index.html` 與 `blog/post.html`：背景圖改用 PNG 版本 `bg1.png`，提升顯示相容性。
+- 調整 `index.html` 與 `blog/post.html`：背景圖改為 `bg2.png`。
+- 調整 `index.html` 與 `blog/post.html`：右下角新增固定標註「川崎工業區夜景 攝於2025/6/12 作者: 潘宇綸」。
+- 調整 `index.html`：移除「右側區域預留給你持續更新內容。你可以把新作品、開發紀錄、學習心得都放在這裡。」提示文字。
+- 調整 `index.html`：將「最新作品」區塊改為「最近在做甚麼」，並更新為四項近況內容。
+- 調整 `index.html`：互換「自我介紹」與「最近在做甚麼」兩個區塊內容位置。
