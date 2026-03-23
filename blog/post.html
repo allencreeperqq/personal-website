@@ -153,16 +153,50 @@
       return { meta, body: match[2] };
     }
 
-    function renderInlineMarkdown(text) {
-      return escapeHtml(text)
-        .replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, '<img class="md-image" src="$2" alt="$1" loading="lazy" />')
+    function resolveContentUrl(rawUrl, currentFile) {
+      const url = String(rawUrl || "").trim();
+      if (!url) return "";
+
+      if (/^(https?:|data:|mailto:|tel:|#)/i.test(url)) {
+        return url;
+      }
+
+      const encodedFile = encodeURI(currentFile || "").replace(/#/g, "%23");
+      const baseUrl = new URL(`posts/${encodedFile}`, window.location.href);
+      return new URL(url, baseUrl).href;
+    }
+
+    function renderInlineMarkdown(text, currentFile) {
+      const imageTokens = [];
+      let raw = String(text);
+
+      raw = raw.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, src) => {
+        const tokenId = imageTokens.length;
+        imageTokens.push({
+          alt: String(alt),
+          src: resolveContentUrl(src, currentFile)
+        });
+        return `__MD_IMAGE_TOKEN_${tokenId}__`;
+      });
+
+      let rendered = escapeHtml(raw)
         .replace(/`([^`]+)`/g, "<code>$1</code>")
         .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
         .replace(/\*([^*]+)\*/g, "<em>$1</em>")
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+      rendered = rendered.replace(/__MD_IMAGE_TOKEN_(\d+)__/g, (match, idx) => {
+        const token = imageTokens[Number(idx)];
+        if (!token || !token.src) return "";
+        const safeAlt = escapeHtml(token.alt);
+        const safeSrc = escapeHtml(token.src);
+        return `<img class="md-image" src="${safeSrc}" alt="${safeAlt}" loading="lazy" />`;
+      });
+
+      return rendered;
     }
 
-    function markdownToHtml(markdown) {
+    function markdownToHtml(markdown, currentFile) {
       const lines = markdown.replace(/\r\n/g, "\n").split("\n");
       const html = [];
       let inList = false;
@@ -183,7 +217,7 @@
             html.push("</ul>");
             inList = false;
           }
-          html.push(`<h3>${renderInlineMarkdown(line.slice(4))}</h3>`);
+          html.push(`<h3>${renderInlineMarkdown(line.slice(4), currentFile)}</h3>`);
           continue;
         }
 
@@ -192,7 +226,7 @@
             html.push("</ul>");
             inList = false;
           }
-          html.push(`<h2>${renderInlineMarkdown(line.slice(3))}</h2>`);
+          html.push(`<h2>${renderInlineMarkdown(line.slice(3), currentFile)}</h2>`);
           continue;
         }
 
@@ -201,7 +235,7 @@
             html.push("</ul>");
             inList = false;
           }
-          html.push(`<h1>${renderInlineMarkdown(line.slice(2))}</h1>`);
+          html.push(`<h1>${renderInlineMarkdown(line.slice(2), currentFile)}</h1>`);
           continue;
         }
 
@@ -210,7 +244,7 @@
             html.push("<ul>");
             inList = true;
           }
-          html.push(`<li>${renderInlineMarkdown(line.slice(2))}</li>`);
+          html.push(`<li>${renderInlineMarkdown(line.slice(2), currentFile)}</li>`);
           continue;
         }
 
@@ -218,7 +252,7 @@
           html.push("</ul>");
           inList = false;
         }
-        html.push(`<p>${renderInlineMarkdown(line)}</p>`);
+        html.push(`<p>${renderInlineMarkdown(line, currentFile)}</p>`);
       }
 
       if (inList) html.push("</ul>");
@@ -258,7 +292,7 @@
         const { meta, body } = parseFrontMatter(markdown);
         titleEl.textContent = meta.title || safeFile;
         metaEl.textContent = `${meta.date || "未設定日期"} | ${meta.category || "未分類"}`;
-        bodyEl.innerHTML = markdownToHtml(body);
+        bodyEl.innerHTML = markdownToHtml(body, safeFile);
       } catch (err) {
         errorEl.hidden = false;
         errorEl.textContent = `文章讀取失敗：${err.message}`;

@@ -35,3 +35,4 @@
 - 新增 `blog/standard.md`：集中保存 Blog Markdown 固定模板與欄位規範。
 - 調整 `blog/post.html`：新增 Markdown 圖片語法 `![alt](url)` 支援與圖片顯示樣式。
 - 調整 `blog/posts/template.md` 與 `blog/standard.md`：補上圖片插入範例與使用規範。
+- 調整 `blog/post.html`：修正圖片相對路徑解析基準，避免文章可讀但圖片載入失敗。
