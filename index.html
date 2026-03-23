@@ -326,6 +326,31 @@
       border-bottom-color: #7dd3fc;
     }
 
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .all-post-list {
+      margin: 10px 0 0;
+      padding-left: 1.2rem;
+      color: #cbd5e1;
+      line-height: 1.8;
+    }
+
+    .all-post-list li {
+      margin: 4px 0;
+    }
+
+    .all-post-list a {
+      color: #7dd3fc;
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+    }
+
+    .all-post-list a:hover {
+      border-bottom-color: #7dd3fc;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .page-layout {
         animation: none;
@@ -439,6 +464,11 @@
           <div id="blog-list" class="blog-list"></div>
         </article>
 
+        <article class="content-block full-width">
+          <h3>全部貼文列表</h3>
+          <ul id="all-post-list" class="all-post-list"></ul>
+        </article>
+
       </div>
     </section>
   </main>
@@ -527,8 +557,9 @@
 
     async function renderBlogPosts() {
       const container = document.getElementById("blog-list");
+      const listContainer = document.getElementById("all-post-list");
       const template = document.getElementById("blog-item-template");
-      if (!container || !template) return;
+      if (!container || !listContainer || !template) return;
 
       let sortedPosts = [];
       let missingFiles = [];
@@ -538,15 +569,21 @@
         missingFiles = result.missingFiles;
       } catch (error) {
         container.innerHTML = `<p class="blog-excerpt">Blog 讀取失敗：${error.message}<br>提示：本機請用伺服器開啟（例如 Live Server 或 http.server）。</p>`;
+        listContainer.innerHTML = "<li>無法載入貼文列表</li>";
         return;
       }
 
       container.innerHTML = "";
+      listContainer.innerHTML = "";
       if (missingFiles.length) {
         const warn = document.createElement("p");
         warn.className = "blog-excerpt";
         warn.textContent = `部分文章尚未讀取成功：${missingFiles.join(", ")}`;
         container.appendChild(warn);
+
+        const warnItem = document.createElement("li");
+        warnItem.textContent = `部分文章尚未讀取成功：${missingFiles.join(", ")}`;
+        listContainer.appendChild(warnItem);
       }
 
       if (!sortedPosts.length) {
@@ -554,6 +591,10 @@
         empty.className = "blog-excerpt";
         empty.textContent = "目前沒有可顯示的文章。";
         container.appendChild(empty);
+
+        const emptyItem = document.createElement("li");
+        emptyItem.textContent = "目前沒有可顯示的文章。";
+        listContainer.appendChild(emptyItem);
         return;
       }
 
@@ -573,6 +614,20 @@
         }
 
         container.appendChild(node);
+
+        const item = document.createElement("li");
+        const itemLink = document.createElement("a");
+        itemLink.href = validUrl ? post.url : "#";
+        itemLink.textContent = post.title || "未命名文章";
+        if (!validUrl) {
+          itemLink.textContent = `${itemLink.textContent}（連結待補）`;
+        }
+
+        const meta = document.createElement("span");
+        meta.textContent = ` - ${post.date || "未設定日期"} | ${post.category || "未分類"}`;
+        item.appendChild(itemLink);
+        item.appendChild(meta);
+        listContainer.appendChild(item);
       });
     }
 

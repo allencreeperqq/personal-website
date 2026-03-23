@@ -36,3 +36,4 @@
 - 調整 `blog/post.html`：新增 Markdown 圖片語法 `![alt](url)` 支援與圖片顯示樣式。
 - 調整 `blog/posts/template.md` 與 `blog/standard.md`：補上圖片插入範例與使用規範。
 - 調整 `blog/post.html`：修正圖片相對路徑解析基準，避免文章可讀但圖片載入失敗。
+- 調整 `index.html`：在原模板區域新增「全部貼文列表」，以列表式顯示所有貼文。
