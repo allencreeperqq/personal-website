@@ -100,6 +100,17 @@
       text-decoration: underline;
     }
 
+    .post-body img.md-image {
+      display: block;
+      width: min(100%, 760px);
+      height: auto;
+      margin: 1rem auto;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+      background: rgba(2, 6, 23, 0.45);
+    }
+
     .error {
       margin-top: 14px;
       color: #fca5a5;
@@ -144,6 +155,7 @@
 
     function renderInlineMarkdown(text) {
       return escapeHtml(text)
+        .replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, '<img class="md-image" src="$2" alt="$1" loading="lazy" />')
         .replace(/`([^`]+)`/g, "<code>$1</code>")
         .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
         .replace(/\*([^*]+)\*/g, "<em>$1</em>")
