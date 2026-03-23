@@ -31,3 +31,5 @@
 - 調整錯誤提示：針對 `file://` 直開情境提供清楚訊息，避免僅顯示 "Failed to fetch"。
 - 調整 `index.html`：Blog 載入改為容錯模式，單篇 404 不會中斷整體顯示。
 - 新增 `.nojekyll`：提升 GitHub Pages 對 Markdown 文章原始檔路徑的相容性。
+- 調整 `index.html`：移除頁面中顯示的固定模板區塊。
+- 新增 `blog/standard.md`：集中保存 Blog Markdown 固定模板與欄位規範。

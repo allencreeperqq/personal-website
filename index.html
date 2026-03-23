@@ -326,27 +326,6 @@
       border-bottom-color: #7dd3fc;
     }
 
-    .template-box {
-      margin-top: 10px;
-      border: 1px solid rgba(148, 163, 184, 0.22);
-      border-radius: 10px;
-      background: rgba(15, 23, 42, 0.55);
-      padding: 12px;
-      overflow-x: auto;
-    }
-
-    .template-box pre {
-      margin: 0;
-      color: #cbd5e1;
-      font-size: 0.84rem;
-      line-height: 1.6;
-      white-space: pre;
-    }
-
-    .full-width {
-      grid-column: 1 / -1;
-    }
-
     @media (prefers-reduced-motion: reduce) {
       .page-layout {
         animation: none;
@@ -460,21 +439,6 @@
           <div id="blog-list" class="blog-list"></div>
         </article>
 
-        <article class="content-block full-width">
-          <h3>Blog 更新模板（固定格式）</h3>
-          <p>請在 <strong>blog/posts</strong> 新增 Markdown 文章，並在 <strong>blog/posts/index.json</strong> 登記檔名，首頁會自動依固定格式顯示。</p>
-          <div class="template-box">
-            <pre>---
-title: 文章標題
-date: 2026-03-23
-category: 分類
-excerpt: 摘要（1~2句）
----
-
-# 文章內容</pre>
-          </div>
-          <p>顯示規則：系統會依日期新到舊排序，固定輸出「日期｜分類｜標題｜摘要｜閱讀全文」，並可在 GitHub Pages 直接運作。</p>
-        </article>
       </div>
     </section>
   </main>
