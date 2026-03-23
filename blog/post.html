@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blog 文章</title>
+  <style>
+    :root {
+      --bg: #0b1324;
+      --panel: rgba(15, 23, 42, 0.86);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --border: rgba(148, 163, 184, 0.3);
+      --accent: #38bdf8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 22px;
+      font-family: "Segoe UI", "Noto Sans TC", sans-serif;
+      color: var(--text);
+      background:
+        linear-gradient(160deg, rgba(11, 19, 36, 0.88), rgba(19, 42, 69, 0.88)),
+        radial-gradient(circle at 20% 15%, rgba(56, 189, 248, 0.16), transparent 36%),
+        var(--bg);
+    }
+
+    .post-wrap {
+      width: min(900px, 100%);
+      margin: 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--panel);
+      padding: 24px;
+      box-shadow: 0 24px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .top-link {
+      color: #7dd3fc;
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+    }
+
+    .top-link:hover {
+      border-bottom-color: #7dd3fc;
+    }
+
+    .post-title {
+      margin: 14px 0 0;
+      font-size: clamp(1.55rem, 2.8vw, 2rem);
+    }
+
+    .post-meta {
+      margin-top: 8px;
+      color: #bfdbfe;
+      font-size: 0.95rem;
+    }
+
+    .post-body {
+      margin-top: 18px;
+      color: #cbd5e1;
+      line-height: 1.78;
+    }
+
+    .post-body h1,
+    .post-body h2,
+    .post-body h3 {
+      color: #dbeafe;
+      margin: 1.2em 0 0.55em;
+      line-height: 1.35;
+    }
+
+    .post-body p {
+      margin: 0.9em 0;
+    }
+
+    .post-body ul {
+      margin: 0.8em 0;
+      padding-left: 1.2rem;
+    }
+
+    .post-body code {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 6px;
+      padding: 0.1em 0.35em;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.92em;
+    }
+
+    .post-body a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .post-body a:hover {
+      text-decoration: underline;
+    }
+
+    .error {
+      margin-top: 14px;
+      color: #fca5a5;
+    }
+  </style>
+</head>
+<body>
+  <main class="post-wrap">
+    <a class="top-link" href="../index.html">回到首頁</a>
+    <h1 id="post-title" class="post-title">載入中...</h1>
+    <div id="post-meta" class="post-meta"></div>
+    <article id="post-body" class="post-body"></article>
+    <p id="error-text" class="error" hidden></p>
+  </main>
+
+  <script>
+    function escapeHtml(input) {
+      return String(input)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function parseFrontMatter(text) {
+      const match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+      if (!match) return { meta: {}, body: text };
+
+      const meta = {};
+      const lines = match[1].split(/\r?\n/);
+      for (const line of lines) {
+        const idx = line.indexOf(":");
+        if (idx === -1) continue;
+        const key = line.slice(0, idx).trim();
+        const value = line.slice(idx + 1).trim();
+        if (key) meta[key] = value;
+      }
+
+      return { meta, body: match[2] };
+    }
+
+    function renderInlineMarkdown(text) {
+      return escapeHtml(text)
+        .replace(/`([^`]+)`/g, "<code>$1</code>")
+        .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    }
+
+    function markdownToHtml(markdown) {
+      const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+      const html = [];
+      let inList = false;
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+
+        if (!line) {
+          if (inList) {
+            html.push("</ul>");
+            inList = false;
+          }
+          continue;
+        }
+
+        if (line.startsWith("### ")) {
+          if (inList) {
+            html.push("</ul>");
+            inList = false;
+          }
+          html.push(`<h3>${renderInlineMarkdown(line.slice(4))}</h3>`);
+          continue;
+        }
+
+        if (line.startsWith("## ")) {
+          if (inList) {
+            html.push("</ul>");
+            inList = false;
+          }
+          html.push(`<h2>${renderInlineMarkdown(line.slice(3))}</h2>`);
+          continue;
+        }
+
+        if (line.startsWith("# ")) {
+          if (inList) {
+            html.push("</ul>");
+            inList = false;
+          }
+          html.push(`<h1>${renderInlineMarkdown(line.slice(2))}</h1>`);
+          continue;
+        }
+
+        if (line.startsWith("- ")) {
+          if (!inList) {
+            html.push("<ul>");
+            inList = true;
+          }
+          html.push(`<li>${renderInlineMarkdown(line.slice(2))}</li>`);
+          continue;
+        }
+
+        if (inList) {
+          html.push("</ul>");
+          inList = false;
+        }
+        html.push(`<p>${renderInlineMarkdown(line)}</p>`);
+      }
+
+      if (inList) html.push("</ul>");
+      return html.join("\n");
+    }
+
+    async function loadPost() {
+      const titleEl = document.getElementById("post-title");
+      const metaEl = document.getElementById("post-meta");
+      const bodyEl = document.getElementById("post-body");
+      const errorEl = document.getElementById("error-text");
+
+      if (window.location.protocol === "file:") {
+        errorEl.hidden = false;
+        errorEl.textContent = "偵測到 file:// 直接開啟，瀏覽器會阻擋 fetch。請改用 GitHub Pages 或本機伺服器預覽。";
+        titleEl.textContent = "無法載入文章";
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const file = params.get("file");
+      if (!file) {
+        errorEl.hidden = false;
+        errorEl.textContent = "找不到文章參數，請從首頁重新進入。";
+        titleEl.textContent = "無法載入文章";
+        return;
+      }
+
+      const safeFile = file.replace(/\.\./g, "").replace(/^\//, "");
+      const postPath = `posts/${safeFile}`;
+
+      try {
+        const response = await fetch(postPath, { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const markdown = await response.text();
+        const { meta, body } = parseFrontMatter(markdown);
+        titleEl.textContent = meta.title || safeFile;
+        metaEl.textContent = `${meta.date || "未設定日期"} | ${meta.category || "未分類"}`;
+        bodyEl.innerHTML = markdownToHtml(body);
+      } catch (err) {
+        errorEl.hidden = false;
+        errorEl.textContent = `文章讀取失敗：${err.message}`;
+        titleEl.textContent = "無法載入文章";
+      }
+    }
+
+    loadPost();
+  </script>
+</body>
+</html>

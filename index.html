@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%92%AB%3C/text%3E%3C/svg%3E" />
+  <title>自我介紹</title>
+  <style>
+    :root {
+      --bg-1: #0b1324;
+      --bg-2: #132a45;
+      --panel: rgba(15, 23, 42, 0.82);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-2: #0ea5e9;
+      --border: rgba(148, 163, 184, 0.3);
+    }
+
+    * { box-sizing: border-box; }
+
+    @keyframes pageFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px;
+      font-family: "Segoe UI", "Noto Sans TC", sans-serif;
+      color: var(--text);
+      background:
+        linear-gradient(145deg, rgba(11, 19, 36, 0.75), rgba(19, 42, 69, 0.75)),
+        radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.15), transparent 40%),
+        radial-gradient(circle at 80% 80%, rgba(14, 165, 233, 0.15), transparent 35%),
+        url("menu-picr2.jpg") center/cover no-repeat;
+    }
+
+    .page-layout {
+      width: min(1280px, 100%);
+      margin: 0;
+      display: grid;
+      grid-template-columns: minmax(300px, 1fr) minmax(0, 2fr);
+      gap: 22px;
+      align-items: start;
+      animation: pageFadeIn 0.75s ease-out both;
+    }
+
+    .intro-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--panel);
+      backdrop-filter: blur(4px);
+      box-shadow: 0 24px 45px rgba(0, 0, 0, 0.35);
+      padding: 28px;
+      height: 100%;
+    }
+
+    .content-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--panel);
+      backdrop-filter: blur(4px);
+      box-shadow: 0 24px 45px rgba(0, 0, 0, 0.35);
+      padding: 28px;
+      min-height: 100%;
+    }
+
+    .student-header {
+      margin-bottom: 16px;
+      padding: 10px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 10px;
+      background: rgba(2, 6, 23, 0.45);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .photo-placeholder {
+      width: min(100%, 260px);
+      aspect-ratio: 1 / 1;
+      border: 2px dashed rgba(125, 211, 252, 0.65);
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.55);
+      display: grid;
+      place-items: center;
+      color: #dbeafe;
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+      text-align: center;
+      padding: 10px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.6rem, 2.8vw, 2rem);
+      letter-spacing: 0.02em;
+    }
+
+    .intro-box {
+      margin-top: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 10px;
+      background: rgba(2, 6, 23, 0.45);
+      padding: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .intro-box p {
+      margin: 0;
+    }
+
+    .intro-list {
+      margin: 0;
+      padding-left: 1.2rem;
+      color: #cbd5e1;
+      line-height: 1.8;
+    }
+
+    .profile-grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .profile-item {
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 10px;
+      background: rgba(2, 6, 23, 0.45);
+      padding: 10px 12px;
+      color: #dbeafe;
+      line-height: 1.6;
+    }
+
+    .profile-item strong {
+      color: #bfdbfe;
+    }
+
+    .intro-text-box {
+      margin-top: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 10px;
+      background: rgba(2, 6, 23, 0.45);
+      padding: 14px;
+    }
+
+    .intro-text-box h2 {
+      margin: 0;
+      font-size: 1rem;
+      color: #dbeafe;
+    }
+
+    .intro-text-box p {
+      margin: 10px 0 0;
+      color: #cbd5e1;
+      line-height: 1.75;
+    }
+
+    .social-list {
+      margin-top: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .social-box {
+      margin-top: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 10px;
+      background: rgba(2, 6, 23, 0.45);
+      padding: 14px;
+    }
+
+    .social-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #dbeafe;
+      font-size: 0.95rem;
+    }
+
+    .social-item a {
+      color: #7dd3fc;
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.2s ease;
+    }
+
+    .social-item a:hover {
+      border-bottom-color: #7dd3fc;
+    }
+
+    .icon {
+      width: 20px;
+      height: 20px;
+      flex: 0 0 auto;
+      color: #c4b5fd;
+    }
+
+    .hint {
+      margin-top: 10px;
+      color: #bfdbfe;
+      font-size: 0.92rem;
+    }
+
+    .actions {
+      margin-top: 20px;
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .back-link {
+      display: inline-block;
+      min-width: 220px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      text-decoration: none;
+      text-align: center;
+      color: #f8fafc;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border: 1px solid rgba(125, 211, 252, 0.6);
+      font-weight: 600;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .back-link:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 22px rgba(14, 165, 233, 0.35);
+    }
+
+    .content-title {
+      margin: 0;
+      font-size: clamp(1.5rem, 2.6vw, 2rem);
+      letter-spacing: 0.02em;
+    }
+
+    .content-subtitle {
+      margin: 10px 0 0;
+      color: #bfdbfe;
+      line-height: 1.65;
+    }
+
+    .content-grid {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .content-block {
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 12px;
+      background: rgba(2, 6, 23, 0.45);
+      padding: 16px;
+    }
+
+    .content-block h3 {
+      margin: 0;
+      color: #dbeafe;
+      font-size: 1.06rem;
+    }
+
+    .content-block ul {
+      margin: 10px 0 0;
+      padding-left: 1.15rem;
+      color: #cbd5e1;
+      line-height: 1.75;
+    }
+
+    .content-block p {
+      margin: 10px 0 0;
+      color: #cbd5e1;
+      line-height: 1.7;
+    }
+
+    .blog-list {
+      margin-top: 10px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .blog-card {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.55);
+      padding: 12px;
+    }
+
+    .blog-card h4 {
+      margin: 0;
+      color: #dbeafe;
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .blog-meta {
+      margin-top: 6px;
+      color: #93c5fd;
+      font-size: 0.88rem;
+    }
+
+    .blog-excerpt {
+      margin-top: 8px;
+      color: #cbd5e1;
+      line-height: 1.7;
+    }
+
+    .blog-link {
+      margin-top: 8px;
+      display: inline-block;
+      color: #7dd3fc;
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+    }
+
+    .blog-link:hover {
+      border-bottom-color: #7dd3fc;
+    }
+
+    .template-box {
+      margin-top: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.55);
+      padding: 12px;
+      overflow-x: auto;
+    }
+
+    .template-box pre {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 0.84rem;
+      line-height: 1.6;
+      white-space: pre;
+    }
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .page-layout {
+        animation: none;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .page-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 14px;
+      }
+
+      .intro-card,
+      .content-card {
+        padding: 22px 16px;
+      }
+
+      .back-link {
+        width: 100%;
+        min-width: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page-layout">
+    <section class="intro-card">
+      <div class="student-header">
+        <div class="photo-placeholder">照片預留區<br />（之後可放你的個人照片）</div>
+      </div>
+
+      <h1>自我介紹</h1>
+
+      <section class="intro-box">
+        <div class="profile-grid">
+          <div class="profile-item"><strong>姓名：</strong>潘宇綸</div>
+          <div class="profile-item"><strong>學校：</strong>中原大學</div>
+          <div class="profile-item"><strong>科系：</strong>電機系</div>
+          <div class="profile-item"><strong>興趣：</strong>電吉他、K-ON!</div>
+          <div class="profile-item" style="grid-column: 1 / -1;"><strong>正在做的事：</strong>試著在中原大學校內嚕到貓、自己製作一個效果器！</div>
+        </div>
+      </section>
+
+      <section class="intro-text-box">
+        <h2>自我介紹文字</h2>
+        <p>你好，我是 Allen，本名潘宇綸，目前就讀中原大學電機系，從小學時就對電腦很感興趣，國小就開始關注科技圈，國中時加入全校的電腦維修志工團隊，負責全校的電腦營運及維修工作。高中發現自己對軟體比較沒有緣分，所以放棄資工來攻讀電機，但是依然對資安及網路很有興趣，目前正在學習 vibe coding，如果有任何問題或是想要一起玩音樂歡迎找我！</p>
+        <p>更多我的文章：<a href="https://forum.gamer.com.tw/Co.php?bsn=41226&amp;sn=78547" target="_blank" rel="noopener noreferrer">https://forum.gamer.com.tw/Co.php?bsn=41226&amp;sn=78547</a></p>
+        <p><strong>主推：</strong>AMANE KANATA💫</p>
+      </section>
+
+      <section class="social-box">
+        <div class="social-list">
+          <div class="social-item">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.8" />
+              <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8" />
+              <circle cx="17.2" cy="6.8" r="1.2" fill="currentColor" />
+            </svg>
+            <span>Instagram：<a href="https://www.instagram.com/allen_87_2/" target="_blank" rel="noopener noreferrer">https://www.instagram.com/allen_87_2/</a></span>
+          </div>
+
+          <div class="social-item">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7.5 7.2C9 6 10.5 5.4 12 5.4C13.5 5.4 15 6 16.5 7.2C17.6 7 18.7 6.7 19.7 6.2C20.4 7.6 20.7 9.1 20.7 10.7C20.7 14.5 18.6 17.1 15 18.1C14.6 17.5 14.3 16.9 14.2 16.2C14.8 15.8 15.2 15.2 15.2 14.5V11.3C14.3 11.7 13.2 11.9 12 11.9C10.8 11.9 9.7 11.7 8.8 11.3V14.5C8.8 15.2 9.2 15.8 9.8 16.2C9.7 16.9 9.4 17.5 9 18.1C5.4 17.1 3.3 14.5 3.3 10.7C3.3 9.1 3.6 7.6 4.3 6.2C5.3 6.7 6.4 7 7.5 7.2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+              <circle cx="9.5" cy="10.2" r="1" fill="currentColor" />
+              <circle cx="14.5" cy="10.2" r="1" fill="currentColor" />
+            </svg>
+            <span>Discord：_beta.decay</span>
+          </div>
+
+          <div class="social-item">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 3.5C16.7 3.5 20.5 7.3 20.5 12C20.5 16.7 16.7 20.5 12 20.5C7.3 20.5 3.5 16.7 3.5 12C3.5 7.3 7.3 3.5 12 3.5Z" stroke="currentColor" stroke-width="1.6" />
+              <path d="M8 12H16M12 8V16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            </svg>
+            <span>巴哈：<a href="https://home.gamer.com.tw/profile/index.php?owner=allen872" target="_blank" rel="noopener noreferrer">https://home.gamer.com.tw/profile/index.php?owner=allen872</a></span>
+          </div>
+        </div>
+      </section>
+
+      <div class="actions">
+        <a class="back-link" href="index.html">回到主選單</a>
+      </div>
+    </section>
+
+    <section class="content-card">
+      <h2 class="content-title">作品與 Blog</h2>
+      <p class="content-subtitle">右側區域預留給你持續更新內容。你可以把新作品、開發紀錄、學習心得都放在這裡。</p>
+
+      <div class="content-grid">
+        <article class="content-block">
+          <h3>最新作品</h3>
+          <ul>
+            <li>作品標題 A：一句話介紹與連結</li>
+            <li>作品標題 B：技術重點與截圖連結</li>
+            <li>作品標題 C：Demo / GitHub 連結</li>
+          </ul>
+        </article>
+
+        <article class="content-block">
+          <h3>近期 Blog</h3>
+          <div id="blog-list" class="blog-list"></div>
+        </article>
+
+        <article class="content-block full-width">
+          <h3>Blog 更新模板（固定格式）</h3>
+          <p>請在 <strong>blog/posts</strong> 新增 Markdown 文章，並在 <strong>blog/posts/index.json</strong> 登記檔名，首頁會自動依固定格式顯示。</p>
+          <div class="template-box">
+            <pre>---
+title: 文章標題
+date: 2026-03-23
+category: 分類
+excerpt: 摘要（1~2句）
+---
+
+# 文章內容</pre>
+          </div>
+          <p>顯示規則：系統會依日期新到舊排序，固定輸出「日期｜分類｜標題｜摘要｜閱讀全文」，並可在 GitHub Pages 直接運作。</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <template id="blog-item-template">
+    <article class="blog-card">
+      <h4 class="blog-title"></h4>
+      <div class="blog-meta"></div>
+      <p class="blog-excerpt"></p>
+      <a class="blog-link" target="_blank" rel="noopener noreferrer">閱讀全文</a>
+    </article>
+  </template>
+
+  <script>
+    const BLOG_INDEX_PATH = "blog/posts/index.json";
+
+    function parseFrontMatter(text) {
+      const match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+      if (!match) return { meta: {}, body: text };
+
+      const meta = {};
+      const lines = match[1].split(/\r?\n/);
+      for (const line of lines) {
+        const idx = line.indexOf(":");
+        if (idx === -1) continue;
+        const key = line.slice(0, idx).trim();
+        const value = line.slice(idx + 1).trim();
+        if (key) meta[key] = value;
+      }
+
+      return { meta, body: match[2] };
+    }
+
+    function getExcerpt(meta, body) {
+      if (meta.excerpt) return meta.excerpt;
+      const plain = body.replace(/\s+/g, " ").trim();
+      if (!plain) return "尚無摘要";
+      return plain.length > 90 ? `${plain.slice(0, 90)}...` : plain;
+    }
+
+    async function loadMarkdownPosts() {
+      if (window.location.protocol === "file:") {
+        throw new Error("偵測到 file:// 直接開啟，瀏覽器會阻擋 fetch。請改用 GitHub Pages 或本機伺服器預覽。");
+      }
+
+      const indexResponse = await fetch(BLOG_INDEX_PATH, { cache: "no-store" });
+      if (!indexResponse.ok) {
+        throw new Error(`讀取文章索引失敗：HTTP ${indexResponse.status}`);
+      }
+
+      const indexData = await indexResponse.json();
+      const files = Array.isArray(indexData.posts) ? indexData.posts : [];
+
+      const posts = await Promise.all(
+        files.map(async (fileName) => {
+          const safeName = String(fileName).replace(/\.\./g, "").replace(/^\//, "");
+          const path = `blog/posts/${safeName}`;
+          const response = await fetch(path, { cache: "no-store" });
+          if (!response.ok) {
+            throw new Error(`讀取 ${safeName} 失敗：HTTP ${response.status}`);
+          }
+
+          const markdown = await response.text();
+          const { meta, body } = parseFrontMatter(markdown);
+          return {
+            date: meta.date || "0000-00-00",
+            title: meta.title || safeName,
+            category: meta.category || "未分類",
+            excerpt: getExcerpt(meta, body),
+            url: `blog/post.html?file=${encodeURIComponent(safeName)}`
+          };
+        })
+      );
+
+      return posts.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    }
+
+    async function renderBlogPosts() {
+      const container = document.getElementById("blog-list");
+      const template = document.getElementById("blog-item-template");
+      if (!container || !template) return;
+
+      let sortedPosts = [];
+      try {
+        sortedPosts = await loadMarkdownPosts();
+      } catch (error) {
+        container.innerHTML = `<p class="blog-excerpt">Blog 讀取失敗：${error.message}<br>提示：本機請用伺服器開啟（例如 Live Server 或 http.server）。</p>`;
+        return;
+      }
+
+      container.innerHTML = "";
+      sortedPosts.forEach((post) => {
+        const node = template.content.cloneNode(true);
+        node.querySelector(".blog-title").textContent = post.title || "未命名文章";
+        node.querySelector(".blog-meta").textContent = `${post.date || "未設定日期"} | ${post.category || "未分類"}`;
+        node.querySelector(".blog-excerpt").textContent = post.excerpt || "尚無摘要";
+
+        const link = node.querySelector(".blog-link");
+        const validUrl = typeof post.url === "string" && post.url.trim() !== "";
+        if (validUrl) {
+          link.href = post.url;
+        } else {
+          link.href = "#";
+          link.textContent = "連結待補";
+        }
+
+        container.appendChild(node);
+      });
+    }
+
+    renderBlogPosts();
+  </script>
+</body>
+</html>
