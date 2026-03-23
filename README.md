@@ -59,3 +59,6 @@
 - 調整 `index.html`：移除「右側區域預留給你持續更新內容。你可以把新作品、開發紀錄、學習心得都放在這裡。」提示文字。
 - 調整 `index.html`：將「最新作品」區塊改為「最近在做甚麼」，並更新為四項近況內容。
 - 調整 `index.html`：互換「自我介紹」與「最近在做甚麼」兩個區塊內容位置。
+- 新增 `content/recent-doing.txt` 與 `content/self-intro.txt`：將「最近在做甚麼」與「自我介紹」改為可由 txt 外部維護。
+- 調整 `index.html`：首頁載入時自動讀取上述 txt，修改文字不需再改 HTML。
+- 調整 `blog/posts/`：修正文章檔名與 `index.json` 不一致問題（`2026-03-23-homemade NAS.md`），使新貼文可正常顯示於首頁清單。

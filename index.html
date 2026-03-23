@@ -580,7 +580,7 @@
 
       <section class="intro-text-box">
         <h2>最近在做甚麼</h2>
-        <ul class="intro-list">
+        <ul class="intro-list" id="recent-doing-list">
           <li>自動控制社的期末成果發表「自製電吉他 Distortion 效果器」</li>
           <li>練習「go go maniac」等多首日搖歌曲，當然，也有 BLUES</li>
           <li>試著在社團活動與讀書與興趣之間找到平衡點</li>
@@ -629,9 +629,11 @@
       <div class="content-grid">
         <article class="content-block">
           <h3>自我介紹</h3>
-          <p>你好，我是 Allen，本名潘宇綸，目前就讀中原大學電機系，從小學時就對電腦很感興趣，國小就開始關注科技圈，國中時加入全校的電腦維修志工團隊，負責全校的電腦營運及維修工作。高中發現自己對軟體比較沒有緣分，所以放棄資工來攻讀電機，但是依然對資安及網路很有興趣，目前正在學習 vibe coding，如果有任何問題或是想要一起玩音樂歡迎找我！</p>
-          <p>更多我的文章：<a href="https://forum.gamer.com.tw/Co.php?bsn=41226&amp;sn=78547" target="_blank" rel="noopener noreferrer">https://forum.gamer.com.tw/Co.php?bsn=41226&amp;sn=78547</a></p>
-          <p><strong>主推：</strong>AMANE KANATA💫</p>
+          <div id="self-intro-text">
+            <p>你好，我是 Allen，本名潘宇綸，目前就讀中原大學電機系，從小學時就對電腦很感興趣，國小就開始關注科技圈，國中時加入全校的電腦維修志工團隊，負責全校的電腦營運及維修工作。高中發現自己對軟體比較沒有緣分，所以放棄資工來攻讀電機，但是依然對資安及網路很有興趣，目前正在學習 vibe coding，如果有任何問題或是想要一起玩音樂歡迎找我！</p>
+            <p>更多我的文章：<a href="https://forum.gamer.com.tw/Co.php?bsn=41226&amp;sn=78547" target="_blank" rel="noopener noreferrer">https://forum.gamer.com.tw/Co.php?bsn=41226&amp;sn=78547</a></p>
+            <p><strong>主推：</strong>AMANE KANATA💫</p>
+          </div>
         </article>
 
         <article class="content-block">
@@ -659,15 +661,78 @@
 
   <script>
     const BLOG_INDEX_PATH = "blog/posts/index.json";
+    const RECENT_DOING_TEXT_PATH = "content/recent-doing.txt";
+    const SELF_INTRO_TEXT_PATH = "content/self-intro.txt";
+
+    function escapeHtml(input) {
+      return String(input)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function linkifyText(text) {
+      const escaped = escapeHtml(text);
+      return escaped.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+      });
+    }
+
+    async function loadEditableTextSections() {
+      if (window.location.protocol === "file:") {
+        return;
+      }
+
+      const recentList = document.getElementById("recent-doing-list");
+      const selfIntro = document.getElementById("self-intro-text");
+
+      try {
+        const [recentRes, introRes] = await Promise.all([
+          fetch(RECENT_DOING_TEXT_PATH, { cache: "no-store" }),
+          fetch(SELF_INTRO_TEXT_PATH, { cache: "no-store" })
+        ]);
+
+        if (recentList && recentRes.ok) {
+          const recentText = await recentRes.text();
+          const items = recentText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+          if (items.length) {
+            recentList.innerHTML = items.map((item) => `<li>${linkifyText(item)}</li>`).join("");
+          }
+        }
+
+        if (selfIntro && introRes.ok) {
+          const introText = await introRes.text();
+          const paragraphs = introText
+            .split(/\r?\n\s*\r?\n/)
+            .map((part) => part.trim())
+            .filter(Boolean);
+
+          if (paragraphs.length) {
+            selfIntro.innerHTML = paragraphs
+              .map((part) => {
+                const lines = part.split(/\r?\n/).map((line) => linkifyText(line));
+                return `<p>${lines.join("<br>")}</p>`;
+              })
+              .join("");
+          }
+        }
+      } catch (error) {
+        console.warn("文字區塊 txt 載入失敗，使用預設內容", error);
+      }
+    }
 
     window.addEventListener("DOMContentLoaded", () => {
       const modal = document.getElementById("welcomeModal");
       const closeBtn = document.getElementById("closeWelcomeModal");
-      if (!modal || !closeBtn) return;
+      if (modal && closeBtn) {
+        closeBtn.addEventListener("click", () => {
+          modal.hidden = true;
+        });
+      }
 
-      closeBtn.addEventListener("click", () => {
-        modal.hidden = true;
-      });
+      loadEditableTextSections();
     });
 
     function parseFrontMatter(text) {
