@@ -528,28 +528,37 @@ excerpt: 摘要（1~2句）
       const indexData = await indexResponse.json();
       const files = Array.isArray(indexData.posts) ? indexData.posts : [];
 
-      const posts = await Promise.all(
-        files.map(async (fileName) => {
-          const safeName = String(fileName).replace(/\.\./g, "").replace(/^\//, "");
-          const path = `blog/posts/${safeName}`;
-          const response = await fetch(path, { cache: "no-store" });
-          if (!response.ok) {
-            throw new Error(`讀取 ${safeName} 失敗：HTTP ${response.status}`);
-          }
+      const posts = [];
+      const missingFiles = [];
 
-          const markdown = await response.text();
-          const { meta, body } = parseFrontMatter(markdown);
-          return {
-            date: meta.date || "0000-00-00",
-            title: meta.title || safeName,
-            category: meta.category || "未分類",
-            excerpt: getExcerpt(meta, body),
-            url: `blog/post.html?file=${encodeURIComponent(safeName)}`
-          };
-        })
-      );
+      for (const fileName of files) {
+        const safeName = String(fileName).replace(/\.\./g, "").replace(/^\//, "");
+        const path = `blog/posts/${safeName}`;
+        const response = await fetch(path, { cache: "no-store" });
+        if (!response.ok) {
+          missingFiles.push(`${safeName} (HTTP ${response.status})`);
+          continue;
+        }
 
-      return posts.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+        const markdown = await response.text();
+        const { meta, body } = parseFrontMatter(markdown);
+        posts.push({
+          date: meta.date || "0000-00-00",
+          title: meta.title || safeName,
+          category: meta.category || "未分類",
+          excerpt: getExcerpt(meta, body),
+          url: `blog/post.html?file=${encodeURIComponent(safeName)}`
+        });
+      }
+
+      if (missingFiles.length) {
+        console.warn("下列文章檔案讀取失敗:", missingFiles.join(", "));
+      }
+
+      return {
+        posts: posts.sort((a, b) => String(b.date).localeCompare(String(a.date))),
+        missingFiles
+      };
     }
 
     async function renderBlogPosts() {
@@ -558,14 +567,32 @@ excerpt: 摘要（1~2句）
       if (!container || !template) return;
 
       let sortedPosts = [];
+      let missingFiles = [];
       try {
-        sortedPosts = await loadMarkdownPosts();
+        const result = await loadMarkdownPosts();
+        sortedPosts = result.posts;
+        missingFiles = result.missingFiles;
       } catch (error) {
         container.innerHTML = `<p class="blog-excerpt">Blog 讀取失敗：${error.message}<br>提示：本機請用伺服器開啟（例如 Live Server 或 http.server）。</p>`;
         return;
       }
 
       container.innerHTML = "";
+      if (missingFiles.length) {
+        const warn = document.createElement("p");
+        warn.className = "blog-excerpt";
+        warn.textContent = `部分文章尚未讀取成功：${missingFiles.join(", ")}`;
+        container.appendChild(warn);
+      }
+
+      if (!sortedPosts.length) {
+        const empty = document.createElement("p");
+        empty.className = "blog-excerpt";
+        empty.textContent = "目前沒有可顯示的文章。";
+        container.appendChild(empty);
+        return;
+      }
+
       sortedPosts.forEach((post) => {
         const node = template.content.cloneNode(true);
         node.querySelector(".blog-title").textContent = post.title || "未命名文章";
