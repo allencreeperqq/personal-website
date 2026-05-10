@@ -17,6 +17,14 @@ https://allencreeperqq.github.io/personal-website/
 
 ## 版本歷程
 
+### 2026-05-10
+
+- 調整 `blog/post.html`：新增 Markdown fenced code block（```）語法支援，文章內三反引號包覆的程式碼可正確以區塊樣式顯示。
+- 調整 `blog/post.html`：新增程式碼區塊樣式（`pre.md-code-block`），提供獨立背景、邊框與橫向捲動，提升閱讀性。
+- 調整 `blog/post.html`：新增 MathJax 設定與 CDN 載入（`tex-mml-chtml.js`），啟用 `$...$` 行內公式與 `$$...$$` 區塊公式渲染。
+- 調整 `blog/post.html`：在行內 Markdown 解析加入公式 token 保護流程，避免公式內容被粗體/斜體等規則誤轉換。
+- 調整 `blog/post.html`：文章內容插入後新增 MathJax typeset 觸發（含 clear + promise），修正動態載入貼文時公式不會自動顯示的問題。
+
 ### 2026-03-23
 
 - 新增 `self.html`：建立個人介紹頁面，版型與 `sort_report/self.html` 相同。
