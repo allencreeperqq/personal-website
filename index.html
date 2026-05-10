@@ -663,6 +663,7 @@
     const BLOG_INDEX_PATH = "blog/posts/index.json";
     const RECENT_DOING_TEXT_PATH = "content/recent-doing.txt";
     const SELF_INTRO_TEXT_PATH = "content/self-intro.txt";
+    const RECENT_BLOG_LIMIT = 4;
 
     function escapeHtml(input) {
       return String(input)
@@ -867,7 +868,9 @@
         return;
       }
 
-      sortedPosts.forEach((post) => {
+      const recentPosts = sortedPosts.slice(0, RECENT_BLOG_LIMIT);
+
+      recentPosts.forEach((post) => {
         const node = template.content.cloneNode(true);
         node.querySelector(".blog-title").textContent = post.title || "未命名文章";
         node.querySelector(".blog-meta").textContent = `${post.date || "未設定日期"} | ${post.category || "未分類"}`;
@@ -883,6 +886,11 @@
         }
 
         container.appendChild(node);
+
+      });
+
+      sortedPosts.forEach((post) => {
+        const validUrl = typeof post.url === "string" && post.url.trim() !== "";
 
         const item = document.createElement("li");
         item.className = "all-post-item";

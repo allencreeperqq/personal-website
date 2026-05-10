@@ -24,6 +24,7 @@ https://allencreeperqq.github.io/personal-website/
 - 調整 `blog/post.html`：新增 MathJax 設定與 CDN 載入（`tex-mml-chtml.js`），啟用 `$...$` 行內公式與 `$$...$$` 區塊公式渲染。
 - 調整 `blog/post.html`：在行內 Markdown 解析加入公式 token 保護流程，避免公式內容被粗體/斜體等規則誤轉換。
 - 調整 `blog/post.html`：文章內容插入後新增 MathJax typeset 觸發（含 clear + promise），修正動態載入貼文時公式不會自動顯示的問題。
+- 調整 `index.html`：首頁「近期 Blog」改為最多顯示 4 篇，避免貼文區塊過長影響整體頁面高度；「全部貼文列表」仍維持完整顯示。
 
 ### 2026-03-23
 
