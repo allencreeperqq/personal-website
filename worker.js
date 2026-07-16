@@ -1,40 +1,29 @@
+import {
+  jsonResponse,
+  readJson,
+  normalizeText,
+  getClientIp,
+  buildSetCookie,
+  buildClearCookie
+} from "./server/http.js";
+import {
+  verifyPassword,
+  createSessionToken,
+  requireAdmin,
+  requireCsrf,
+  issueCsrfToken,
+  checkLoginRateLimit,
+  recordLoginFailure,
+  clearLoginFailures,
+  SESSION_COOKIE,
+  CSRF_COOKIE,
+  SESSION_TTL_SECONDS
+} from "./server/auth.js";
+import { listPosts, getPostBySlug, createPost, updatePost, deletePost } from "./server/posts.js";
+import { handleUpload, handleFileGet } from "./server/uploads.js";
+import { listCommentsForAdmin, listCommentPageKeys, setCommentVisibility } from "./server/comments-admin.js";
+
 let schemaReady;
-
-const JSON_HEADERS = {
-  "content-type": "application/json; charset=utf-8",
-  "cache-control": "no-store",
-  "x-content-type-options": "nosniff"
-};
-
-function jsonResponse(payload, status = 200) {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: JSON_HEADERS
-  });
-}
-
-function normalizePageKey(rawKey) {
-  const value = String(rawKey || "").trim().replace(/\r?\n/g, " ");
-  return value.slice(0, 180);
-}
-
-function normalizeText(rawText, maxLength, fallback = "") {
-  const value = String(rawText || "").replace(/\r\n/g, "\n").trim();
-  if (!value) return fallback;
-  return value.slice(0, maxLength);
-}
-
-function getClientIp(request) {
-  return (
-    request.headers.get("cf-connecting-ip") ||
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    ""
-  );
-}
-
-function getUserAgent(request) {
-  return request.headers.get("user-agent") || "";
-}
 
 async function hashText(text) {
   const bytes = new TextEncoder().encode(text);
@@ -76,18 +65,11 @@ async function ensureSchema(env) {
   await schemaReady;
 }
 
-async function readJson(request) {
-  try {
-    return await request.json();
-  } catch {
-    return null;
-  }
-}
-
 function getPageKey(request, body) {
   const url = new URL(request.url);
   const rawKey = body?.key || url.searchParams.get("key") || "";
-  return normalizePageKey(rawKey);
+  const value = String(rawKey || "").trim().replace(/\r?\n/g, " ");
+  return value.slice(0, 180);
 }
 
 async function bumpStats(env, pageKey, delta) {
@@ -171,7 +153,7 @@ async function rateLimitComment(env, request, pageKey) {
   }
 
   const salt = "personal-website-rate-limit";
-  const fingerprint = await hashText(`${getClientIp(request)}|${getUserAgent(request)}|${salt}`);
+  const fingerprint = await hashText(`${getClientIp(request)}|${request.headers.get("user-agent") || ""}|${salt}`);
   const cacheKey = `comment:${pageKey}:${fingerprint}`;
   const blocked = await env.COMMENT_CACHE.get(cacheKey);
   if (blocked) {
@@ -276,13 +258,248 @@ async function handleEngagement(request, env) {
   }
 }
 
+// ---- Admin：登入 / 登出 / 目前狀態 ----
+
+async function handleAdminLogin(request, env) {
+  if (!env.ADMIN_USERNAME || !env.ADMIN_PASSWORD_HASH || !env.SESSION_SECRET) {
+    return jsonResponse({ ok: false, error: "Admin 帳號尚未設定完成，請先設定 ADMIN_USERNAME / ADMIN_PASSWORD_HASH / SESSION_SECRET。" }, 503);
+  }
+
+  const body = await readJson(request);
+  const username = normalizeText(body?.username, 60);
+  const password = String(body?.password || "");
+  if (!username || !password) {
+    return jsonResponse({ ok: false, error: "請輸入帳號密碼。" }, 400);
+  }
+
+  const rate = await checkLoginRateLimit(env, request);
+  if (!rate.ok) {
+    return jsonResponse({ ok: false, error: rate.error }, 429);
+  }
+
+  const validUsername = username === env.ADMIN_USERNAME;
+  const validPassword = await verifyPassword(password, env.ADMIN_PASSWORD_HASH);
+
+  if (!validUsername || !validPassword) {
+    if (rate.key) await recordLoginFailure(env, rate.key, rate.count);
+    // 帳號密碼錯誤都回同一句話，避免讓人猜出帳號是否存在。
+    return jsonResponse({ ok: false, error: "帳號或密碼錯誤。" }, 401);
+  }
+
+  if (rate.key) await clearLoginFailures(env, rate.key);
+
+  const token = await createSessionToken(env, username);
+  const csrfToken = issueCsrfToken();
+
+  return jsonResponse({ ok: true, username, csrfToken }, 200, [
+    ["set-cookie", buildSetCookie(SESSION_COOKIE, token, { maxAgeSeconds: SESSION_TTL_SECONDS, httpOnly: true })],
+    ["set-cookie", buildSetCookie(CSRF_COOKIE, csrfToken, { maxAgeSeconds: SESSION_TTL_SECONDS, httpOnly: false })]
+  ]);
+}
+
+function handleAdminLogout() {
+  return jsonResponse({ ok: true }, 200, [
+    ["set-cookie", buildClearCookie(SESSION_COOKIE)],
+    ["set-cookie", buildClearCookie(CSRF_COOKIE)]
+  ]);
+}
+
+async function handleAdminMe(request, env) {
+  const auth = await requireAdmin(request, env);
+  if (!auth.ok) return jsonResponse({ ok: false, error: auth.error }, auth.status);
+  return jsonResponse({ ok: true, username: auth.username });
+}
+
+// ---- Admin：文章 CRUD ----
+
+async function handleAdminMutation(request, env) {
+  if (!env.DB) return jsonResponse({ ok: false, error: "D1 綁定尚未設定。" }, 503);
+  const auth = await requireAdmin(request, env);
+  if (!auth.ok) return jsonResponse({ ok: false, error: auth.error }, auth.status);
+  const csrf = requireCsrf(request);
+  if (!csrf.ok) return jsonResponse({ ok: false, error: csrf.error }, csrf.status);
+  return null; // 檢查都通過
+}
+
+async function handlePostsList(request, env) {
+  if (!env.DB) return jsonResponse({ ok: false, error: "D1 綁定尚未設定。" }, 503);
+
+  const url = new URL(request.url);
+  const wantsAll = url.searchParams.get("status") === "all";
+
+  if (wantsAll) {
+    const auth = await requireAdmin(request, env);
+    if (!auth.ok) return jsonResponse({ ok: false, error: auth.error }, auth.status);
+    const posts = await listPosts(env, { status: "all" });
+    return jsonResponse({ ok: true, posts });
+  }
+
+  const posts = await listPosts(env, { status: "published" });
+  return jsonResponse({ ok: true, posts });
+}
+
+async function handlePostGet(request, env, slug) {
+  if (!env.DB) return jsonResponse({ ok: false, error: "D1 綁定尚未設定。" }, 503);
+
+  const auth = await requireAdmin(request, env);
+  const post = await getPostBySlug(env, slug, { includeDraft: auth.ok });
+  if (!post) return jsonResponse({ ok: false, error: "找不到這篇文章。" }, 404);
+  return jsonResponse({ ok: true, post });
+}
+
+async function handlePostCreate(request, env) {
+  const denied = await handleAdminMutation(request, env);
+  if (denied) return denied;
+
+  try {
+    const body = await readJson(request);
+    const post = await createPost(env, body || {});
+    return jsonResponse({ ok: true, post });
+  } catch (error) {
+    return jsonResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }, 400);
+  }
+}
+
+async function handlePostUpdate(request, env, slug) {
+  const denied = await handleAdminMutation(request, env);
+  if (denied) return denied;
+
+  try {
+    const body = await readJson(request);
+    const post = await updatePost(env, slug, body || {});
+    return jsonResponse({ ok: true, post });
+  } catch (error) {
+    return jsonResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }, 400);
+  }
+}
+
+async function handlePostDelete(request, env, slug) {
+  const denied = await handleAdminMutation(request, env);
+  if (denied) return denied;
+
+  await deletePost(env, slug);
+  return jsonResponse({ ok: true });
+}
+
+// ---- Admin：上傳 ----
+
+async function handleAdminUpload(request, env) {
+  const denied = await handleAdminMutation(request, env);
+  if (denied) return denied;
+  return handleUpload(request, env);
+}
+
+// ---- Admin：留言管理 ----
+
+async function handleAdminCommentsList(request, env) {
+  if (!env.DB) return jsonResponse({ ok: false, error: "D1 綁定尚未設定。" }, 503);
+  const auth = await requireAdmin(request, env);
+  if (!auth.ok) return jsonResponse({ ok: false, error: auth.error }, auth.status);
+
+  const url = new URL(request.url);
+  const pageKey = normalizeText(url.searchParams.get("key"), 180);
+
+  if (!pageKey) {
+    const pageKeys = await listCommentPageKeys(env);
+    return jsonResponse({ ok: true, pageKeys });
+  }
+
+  const comments = await listCommentsForAdmin(env, pageKey);
+  return jsonResponse({ ok: true, comments });
+}
+
+async function handleAdminCommentVisibility(request, env, id) {
+  const denied = await handleAdminMutation(request, env);
+  if (denied) return denied;
+
+  const body = await readJson(request);
+  await setCommentVisibility(env, Number(id), Boolean(body?.visible));
+  return jsonResponse({ ok: true });
+}
+
+// ---- 小工具：路由比對 ----
+
+function matchRoute(pattern, pathname) {
+  const patternParts = pattern.split("/").filter(Boolean);
+  const pathParts = pathname.split("/").filter(Boolean);
+  if (patternParts.length !== pathParts.length) return null;
+
+  const params = {};
+  for (let i = 0; i < patternParts.length; i += 1) {
+    const p = patternParts[i];
+    if (p.startsWith(":")) {
+      params[p.slice(1)] = decodeURIComponent(pathParts[i]);
+    } else if (p !== pathParts[i]) {
+      return null;
+    }
+  }
+  return params;
+}
+
+async function router(request, env) {
+  const url = new URL(request.url);
+  const { pathname } = url;
+  const method = request.method;
+
+  if (pathname === "/api/engagement") {
+    return handleEngagement(request, env);
+  }
+
+  if (pathname === "/api/admin/login" && method === "POST") {
+    return handleAdminLogin(request, env);
+  }
+  if (pathname === "/api/admin/logout" && method === "POST") {
+    return handleAdminLogout();
+  }
+  if (pathname === "/api/admin/me" && method === "GET") {
+    return handleAdminMe(request, env);
+  }
+
+  if (pathname === "/api/posts" && method === "GET") {
+    return handlePostsList(request, env);
+  }
+  if (pathname === "/api/admin/posts" && method === "POST") {
+    return handlePostCreate(request, env);
+  }
+
+  const postSlugMatch = matchRoute("/api/posts/:slug", pathname);
+  if (postSlugMatch && method === "GET") {
+    return handlePostGet(request, env, postSlugMatch.slug);
+  }
+
+  const adminPostMatch = matchRoute("/api/admin/posts/:slug", pathname);
+  if (adminPostMatch && method === "PUT") {
+    return handlePostUpdate(request, env, adminPostMatch.slug);
+  }
+  if (adminPostMatch && method === "DELETE") {
+    return handlePostDelete(request, env, adminPostMatch.slug);
+  }
+
+  if (pathname === "/api/admin/uploads" && method === "POST") {
+    return handleAdminUpload(request, env);
+  }
+
+  if (pathname.startsWith("/api/files/") && method === "GET") {
+    const key = decodeURIComponent(pathname.slice("/api/files/".length));
+    return handleFileGet(env, key);
+  }
+
+  if (pathname === "/api/admin/comments" && method === "GET") {
+    return handleAdminCommentsList(request, env);
+  }
+
+  const commentVisibilityMatch = matchRoute("/api/admin/comments/:id/visibility", pathname);
+  if (commentVisibilityMatch && method === "POST") {
+    return handleAdminCommentVisibility(request, env, commentVisibilityMatch.id);
+  }
+
+  return null;
+}
+
 export default {
   async fetch(request, env, context) {
-    const url = new URL(request.url);
-
-    if (url.pathname === "/api/engagement") {
-      return handleEngagement(request, env, context);
-    }
+    const routed = await router(request, env);
+    if (routed) return routed;
 
     return env.ASSETS.fetch(request);
   }

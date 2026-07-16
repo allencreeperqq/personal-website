@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin 發文後台</title>
+  <style>
+    :root {
+      --bg-1: #090f1d;
+      --bg-2: #122544;
+      --panel: rgba(15, 23, 42, 0.62);
+      --text: #e2e8f0;
+      --muted: #9fb0c6;
+      --accent: #38bdf8;
+      --accent-2: #0ea5e9;
+      --border: rgba(148, 163, 184, 0.3);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 20px;
+      font-family: "Segoe UI", "Noto Sans TC", sans-serif;
+      color: var(--text);
+      background: linear-gradient(140deg, var(--bg-1), var(--bg-2));
+    }
+
+    .layout {
+      width: min(1200px, 100%);
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 1.3rem;
+    }
+
+    .topbar .who {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    button, .btn {
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      border-radius: 8px;
+      background: rgba(30, 41, 59, 0.82);
+      color: #e2e8f0;
+      font: inherit;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+
+    button:hover:not(:disabled), .btn:hover {
+      border-color: rgba(125, 211, 252, 0.65);
+      color: #bae6fd;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      border-color: rgba(125, 211, 252, 0.6);
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #f8fafc;
+      font-weight: 600;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: linear-gradient(165deg, rgba(30, 41, 59, 0.5), rgba(15, 23, 42, 0.6)), var(--panel);
+      padding: 20px;
+    }
+
+    .panel h2 {
+      margin: 0 0 14px;
+      font-size: 1.08rem;
+    }
+
+    .editor-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+      font-size: 0.94rem;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 10px;
+      background: rgba(2, 6, 23, 0.72);
+      color: #e2e8f0;
+      padding: 9px 11px;
+      font: inherit;
+    }
+
+    .field textarea {
+      resize: vertical;
+      min-height: 320px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.92rem;
+      line-height: 1.55;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .toolbar button {
+      font-size: 0.86rem;
+      padding: 6px 10px;
+    }
+
+    .row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    .form-feedback {
+      margin: 0;
+      min-height: 1.3em;
+      font-size: 0.9rem;
+      color: #bfdbfe;
+    }
+
+    .form-feedback.is-error {
+      color: #fca5a5;
+    }
+
+    .preview-pane {
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      border-radius: 10px;
+      background: rgba(2, 6, 23, 0.5);
+      padding: 14px;
+      min-height: 320px;
+      max-height: 520px;
+      overflow-y: auto;
+      color: #cbd5e1;
+      line-height: 1.7;
+    }
+
+    .preview-pane img { max-width: 100%; border-radius: 8px; }
+    .preview-pane pre { overflow-x: auto; padding: 8px; background: rgba(15, 23, 42, 0.8); border-radius: 8px; }
+
+    .post-list {
+      display: grid;
+      gap: 8px;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+
+    .post-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid rgba(125, 211, 252, 0.2);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: rgba(15, 23, 42, 0.5);
+    }
+
+    .post-row .title {
+      font-weight: 600;
+      color: #dbeafe;
+    }
+
+    .post-row .meta {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 2px;
+    }
+
+    .post-row .actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .status-badge {
+      font-size: 0.76rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(94, 234, 212, 0.4);
+      margin-left: 8px;
+    }
+
+    .status-badge.draft {
+      border-color: rgba(251, 191, 36, 0.5);
+      color: #fbbf24;
+    }
+
+    .comment-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .comment-list {
+      display: grid;
+      gap: 8px;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    .comment-row {
+      border: 1px solid rgba(125, 211, 252, 0.18);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: rgba(15, 23, 42, 0.5);
+    }
+
+    .comment-row .meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .comment-row .content {
+      margin-top: 6px;
+      white-space: pre-wrap;
+    }
+
+    .comment-row.is-hidden {
+      opacity: 0.55;
+    }
+
+    @media (max-width: 860px) {
+      .editor-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="topbar">
+      <h1>Admin 發文後台</h1>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="who" id="who-label"></span>
+        <button type="button" id="logout-button">登出</button>
+      </div>
+    </div>
+
+    <section class="panel">
+      <h2 id="editor-heading">新增文章</h2>
+      <div class="editor-grid">
+        <div>
+          <div class="row-2">
+            <label class="field">
+              <span>標題</span>
+              <input type="text" id="post-title" maxlength="120" required />
+            </label>
+            <label class="field">
+              <span>分類</span>
+              <input type="text" id="post-category" list="category-options" maxlength="40" placeholder="未分類" />
+              <datalist id="category-options"></datalist>
+            </label>
+          </div>
+
+          <label class="field">
+            <span>摘要（首頁列表顯示）</span>
+            <input type="text" id="post-excerpt" maxlength="200" />
+          </label>
+
+          <label class="field">
+            <span>內容（Markdown）</span>
+            <div class="toolbar">
+              <button type="button" id="insert-image-btn">插入圖片</button>
+              <button type="button" id="insert-pdf-btn">插入 PDF</button>
+              <input type="file" id="image-file-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden />
+              <input type="file" id="pdf-file-input" accept="application/pdf" hidden />
+              <span class="form-feedback" id="upload-feedback"></span>
+            </div>
+            <textarea id="post-content" placeholder="# 文章內容"></textarea>
+          </label>
+
+          <div class="row-2">
+            <label class="field">
+              <span>狀態</span>
+              <select id="post-status">
+                <option value="draft">草稿</option>
+                <option value="published">發佈</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-primary" id="save-post-btn">儲存</button>
+            <button type="button" id="new-post-btn">新增文章（清空表單）</button>
+            <p class="form-feedback" id="post-feedback"></p>
+          </div>
+        </div>
+
+        <div>
+          <div class="field"><span>即時預覽</span></div>
+          <div class="preview-pane" id="preview-pane"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>文章管理</h2>
+      <div class="post-list" id="post-list"></div>
+    </section>
+
+    <section class="panel">
+      <h2>留言管理</h2>
+      <div class="comment-controls">
+        <label class="field" style="margin:0;">
+          <span>選擇頁面</span>
+          <select id="comment-page-select"></select>
+        </label>
+        <button type="button" id="comment-refresh-btn">重新整理</button>
+      </div>
+      <div class="comment-list" id="comment-list"></div>
+    </section>
+  </div>
+
+  <script src="../../assets/markdown-render.js"></script>
+  <script>
+    const { markdownToHtml } = window.MarkdownRender;
+
+    let currentSlug = null;
+    let csrfToken = "";
+
+    function getCookie(name) {
+      const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+      return match ? decodeURIComponent(match[1]) : "";
+    }
+
+    function refreshCsrfToken() {
+      csrfToken = getCookie("admin_csrf");
+    }
+
+    async function apiFetch(url, options = {}) {
+      const headers = { ...(options.headers || {}) };
+      if (options.method && options.method !== "GET") {
+        headers["x-csrf-token"] = csrfToken;
+      }
+      const response = await fetch(url, { ...options, headers, credentials: "include" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.ok) {
+        throw new Error(data?.error || `請求失敗（HTTP ${response.status}）`);
+      }
+      return data;
+    }
+
+    async function checkAuth() {
+      try {
+        const data = await apiFetch("/api/admin/me");
+        document.getElementById("who-label").textContent = `已登入：${data.username}`;
+        refreshCsrfToken();
+        return true;
+      } catch {
+        window.location.href = "login.html";
+        return false;
+      }
+    }
+
+    function setFormFeedback(message, isError) {
+      const el = document.getElementById("post-feedback");
+      el.textContent = message || "";
+      el.classList.toggle("is-error", Boolean(isError));
+    }
+
+    function setUploadFeedback(message, isError) {
+      const el = document.getElementById("upload-feedback");
+      el.textContent = message || "";
+      el.classList.toggle("is-error", Boolean(isError));
+    }
+
+    function updatePreview() {
+      const content = document.getElementById("post-content").value;
+      document.getElementById("preview-pane").innerHTML = markdownToHtml(content, null);
+    }
+
+    function insertAtCursor(snippet) {
+      const textarea = document.getElementById("post-content");
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const value = textarea.value;
+      textarea.value = value.slice(0, start) + snippet + value.slice(end);
+      const cursor = start + snippet.length;
+      textarea.setSelectionRange(cursor, cursor);
+      textarea.focus();
+      updatePreview();
+    }
+
+    async function uploadFile(file) {
+      const formData = new FormData();
+      formData.append("file", file);
+      return apiFetch("/api/admin/uploads", { method: "POST", body: formData });
+    }
+
+    function resetForm() {
+      currentSlug = null;
+      document.getElementById("editor-heading").textContent = "新增文章";
+      document.getElementById("post-title").value = "";
+      document.getElementById("post-category").value = "";
+      document.getElementById("post-excerpt").value = "";
+      document.getElementById("post-content").value = "";
+      document.getElementById("post-status").value = "draft";
+      setFormFeedback("");
+      updatePreview();
+    }
+
+    function loadPostIntoForm(post) {
+      currentSlug = post.slug;
+      document.getElementById("editor-heading").textContent = `編輯文章：${post.title}`;
+      document.getElementById("post-title").value = post.title;
+      document.getElementById("post-category").value = post.category;
+      document.getElementById("post-excerpt").value = post.excerpt;
+      document.getElementById("post-content").value = post.content;
+      document.getElementById("post-status").value = post.status;
+      setFormFeedback("");
+      updatePreview();
+    }
+
+    async function savePost() {
+      const payload = {
+        title: document.getElementById("post-title").value,
+        category: document.getElementById("post-category").value,
+        excerpt: document.getElementById("post-excerpt").value,
+        content: document.getElementById("post-content").value,
+        status: document.getElementById("post-status").value
+      };
+
+      const saveBtn = document.getElementById("save-post-btn");
+      saveBtn.disabled = true;
+      setFormFeedback("儲存中...");
+
+      try {
+        const data = currentSlug
+          ? await apiFetch(`/api/admin/posts/${encodeURIComponent(currentSlug)}`, {
+              method: "PUT",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify(payload)
+            })
+          : await apiFetch("/api/admin/posts", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify(payload)
+            });
+
+        loadPostIntoForm(data.post);
+        setFormFeedback("已儲存。");
+        await refreshPostList();
+        await refreshCategoryOptions();
+      } catch (error) {
+        setFormFeedback(error.message, true);
+      } finally {
+        saveBtn.disabled = false;
+      }
+    }
+
+    async function deletePostBySlug(slug) {
+      if (!window.confirm("確定要刪除這篇文章嗎？此動作無法復原。")) return;
+      try {
+        await apiFetch(`/api/admin/posts/${encodeURIComponent(slug)}`, { method: "DELETE" });
+        if (currentSlug === slug) resetForm();
+        await refreshPostList();
+      } catch (error) {
+        window.alert(`刪除失敗：${error.message}`);
+      }
+    }
+
+    let allPosts = [];
+
+    async function refreshPostList() {
+      const data = await apiFetch("/api/admin/posts?status=all");
+      allPosts = data.posts;
+      const container = document.getElementById("post-list");
+      container.innerHTML = "";
+
+      if (!allPosts.length) {
+        container.innerHTML = '<p style="color:var(--muted)">目前還沒有透過後台發佈的文章。</p>';
+        return;
+      }
+
+      for (const post of allPosts) {
+        const row = document.createElement("div");
+        row.className = "post-row";
+
+        const info = document.createElement("div");
+        const title = document.createElement("div");
+        title.className = "title";
+        title.textContent = post.title;
+        const badge = document.createElement("span");
+        badge.className = `status-badge ${post.status === "draft" ? "draft" : ""}`;
+        badge.textContent = post.status === "draft" ? "草稿" : "已發佈";
+        title.appendChild(badge);
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.textContent = `${post.date} | ${post.category} | slug: ${post.slug}`;
+
+        info.appendChild(title);
+        info.appendChild(meta);
+
+        const actions = document.createElement("div");
+        actions.className = "actions";
+
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.textContent = "編輯";
+        editBtn.addEventListener("click", () => loadPostIntoForm(post));
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.textContent = "刪除";
+        deleteBtn.addEventListener("click", () => deletePostBySlug(post.slug));
+
+        actions.appendChild(editBtn);
+        actions.appendChild(deleteBtn);
+
+        row.appendChild(info);
+        row.appendChild(actions);
+        container.appendChild(row);
+      }
+    }
+
+    async function refreshCategoryOptions() {
+      const datalist = document.getElementById("category-options");
+      const categories = Array.from(new Set(allPosts.map((p) => p.category).filter(Boolean)));
+      datalist.innerHTML = categories.map((c) => `<option value="${c}"></option>`).join("");
+    }
+
+    async function loadCommentPageKeys() {
+      const select = document.getElementById("comment-page-select");
+      try {
+        const data = await apiFetch("/api/admin/comments");
+        select.innerHTML = (data.pageKeys || [])
+          .map((key) => `<option value="${key}">${key}</option>`)
+          .join("");
+        if (data.pageKeys && data.pageKeys.length) {
+          await loadCommentsForKey(data.pageKeys[0]);
+        }
+      } catch (error) {
+        document.getElementById("comment-list").innerHTML = `<p style="color:#fca5a5">${error.message}</p>`;
+      }
+    }
+
+    async function loadCommentsForKey(pageKey) {
+      const list = document.getElementById("comment-list");
+      list.innerHTML = "載入中...";
+      try {
+        const data = await apiFetch(`/api/admin/comments?key=${encodeURIComponent(pageKey)}`);
+        list.innerHTML = "";
+        if (!data.comments || !data.comments.length) {
+          list.innerHTML = '<p style="color:var(--muted)">這個頁面還沒有留言。</p>';
+          return;
+        }
+        for (const comment of data.comments) {
+          const row = document.createElement("div");
+          row.className = `comment-row ${comment.visible ? "" : "is-hidden"}`;
+
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          meta.innerHTML = `<span>${comment.nickname}｜${comment.created_at}</span>`;
+
+          const toggleBtn = document.createElement("button");
+          toggleBtn.type = "button";
+          toggleBtn.textContent = comment.visible ? "隱藏" : "顯示";
+          toggleBtn.addEventListener("click", async () => {
+            try {
+              await apiFetch(`/api/admin/comments/${comment.id}/visibility`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ visible: !comment.visible })
+              });
+              await loadCommentsForKey(pageKey);
+            } catch (error) {
+              window.alert(`更新失敗：${error.message}`);
+            }
+          });
+
+          meta.appendChild(toggleBtn);
+
+          const content = document.createElement("div");
+          content.className = "content";
+          content.textContent = comment.content;
+
+          row.appendChild(meta);
+          row.appendChild(content);
+          list.appendChild(row);
+        }
+      } catch (error) {
+        list.innerHTML = `<p style="color:#fca5a5">${error.message}</p>`;
+      }
+    }
+
+    document.getElementById("post-content").addEventListener("input", updatePreview);
+    document.getElementById("save-post-btn").addEventListener("click", savePost);
+    document.getElementById("new-post-btn").addEventListener("click", resetForm);
+
+    document.getElementById("insert-image-btn").addEventListener("click", () => {
+      document.getElementById("image-file-input").click();
+    });
+    document.getElementById("insert-pdf-btn").addEventListener("click", () => {
+      document.getElementById("pdf-file-input").click();
+    });
+
+    document.getElementById("image-file-input").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      event.target.value = "";
+      if (!file) return;
+      setUploadFeedback("圖片上傳中...");
+      try {
+        const data = await uploadFile(file);
+        insertAtCursor(`![${file.name}](${data.url})`);
+        setUploadFeedback("圖片已插入。");
+      } catch (error) {
+        setUploadFeedback(error.message, true);
+      }
+    });
+
+    document.getElementById("pdf-file-input").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      event.target.value = "";
+      if (!file) return;
+      setUploadFeedback("PDF 上傳中...");
+      try {
+        const data = await uploadFile(file);
+        insertAtCursor(`!pdf[${file.name}](${data.url})`);
+        setUploadFeedback("PDF 已插入。");
+      } catch (error) {
+        setUploadFeedback(error.message, true);
+      }
+    });
+
+    document.getElementById("comment-page-select").addEventListener("change", (event) => {
+      loadCommentsForKey(event.target.value);
+    });
+    document.getElementById("comment-refresh-btn").addEventListener("click", () => {
+      const select = document.getElementById("comment-page-select");
+      if (select.value) loadCommentsForKey(select.value);
+    });
+
+    document.getElementById("logout-button").addEventListener("click", async () => {
+      await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
+      window.location.href = "login.html";
+    });
+
+    (async function init() {
+      const ok = await checkAuth();
+      if (!ok) return;
+      resetForm();
+      await refreshPostList();
+      await refreshCategoryOptions();
+      await loadCommentPageKeys();
+    })();
+  </script>
+</body>
+</html>

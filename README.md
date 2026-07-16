@@ -34,6 +34,77 @@ wrangler pages dev .
 - [index.html](index.html) 與 [blog/post.html](blog/post.html) 內的 `data-turnstile-site-key` 目前先保留空字串；若要正式啟用 Turnstile，請把 site key 填進去。
 - 留言內容只以純文字儲存與顯示，前端以 `textContent` 呈現，避免 XSS。
 
+## Admin 後台（發文 / 上傳圖片與 PDF / 留言管理）
+
+從 `feature/admin-forum-cms` 分支開始，網站多了一個純後台系統，讓你不用再手動加 `.md` 檔就能發文。這一套只在 Cloudflare Pages 部署上運作（GitHub Pages 沒有 serverless 後端，行為跟現有留言/按讚功能一樣）。
+
+### 這是什麼
+
+- `blog/admin/login.html`：admin 登入頁。
+- `blog/admin/editor.html`：發文 / 編輯文章 / 上傳圖片與 PDF / 留言管理，都在同一頁。
+- 新文章存在 Cloudflare D1 的 `posts` 資料表，首頁「全部貼文列表」會自動把 D1 文章和既有 `blog/posts/*.md` 文章合併顯示、依日期排序。
+- 既有的 `.md` 文章完全不受影響，繼續當唯讀的「舊文章」正常顯示；之後要不要把舊文章也搬進資料庫，之後再決定。
+- 上傳的圖片與 PDF 存在 Cloudflare R2，透過 `/api/files/...` 對外提供讀取。
+
+### 你需要做的事（第一次設定）
+
+以下步驟只有你能做（需要你的 Cloudflare 帳號權限），每一步都附原因：
+
+1. **建立 R2 bucket**（已完成 ✅，你建立的 bucket 叫 `personal-website`）
+
+   ```powershell
+   wrangler r2 bucket create personal-website
+   ```
+
+   為什麼：R2 是 Cloudflare 的物件儲存（類似 S3），適合放圖片/PDF 這種二進位檔案；D1 是關聯式資料庫，不適合塞大量檔案內容。`wrangler.json` 的 `r2_buckets` 綁定（`UPLOADS`）已經對應到 `personal-website` 這個 bucket 名稱。
+
+2. **套用新的 D1 migration**
+
+   ```powershell
+   wrangler d1 migrations apply personal_website
+   ```
+
+   為什麼：套用 `migrations/0002_admin_cms.sql`，新增 `posts`（文章）與 `uploads`（上傳紀錄）兩張表。跟目前留言功能的建置方式相同；就算忘記跑這一步，程式本身在第一次請求時也會自動 `CREATE TABLE IF NOT EXISTS` 補齊。
+
+3. **產生密碼 hash（在你自己電腦上做，密碼不會外流）**
+
+   ```powershell
+   node scripts/hash-password.mjs
+   ```
+
+   照提示輸入兩次想要的 admin 密碼，會印出一段 `pbkdf2$...` 開頭的字串。
+   為什麼：這個工具只在你自己電腦執行，密碼明文只存在你當下的終端機記憶體裡，不會寫進任何檔案、不會經過網路、更不會出現在 git 紀錄或跟我的對話裡；之後 Cloudflare 只會拿到這串 hash。
+
+4. **設定三個 secret**
+
+   ```powershell
+   wrangler secret put ADMIN_USERNAME
+   wrangler secret put ADMIN_PASSWORD_HASH   # 貼上第 3 步產生的整串 hash
+   wrangler secret put SESSION_SECRET        # 可用下面指令產生隨機值
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
+
+   為什麼：Cloudflare secret 是加密保存、不會出現在 `wrangler.json` 或 git repo 裡的敏感資料存放方式；`SESSION_SECRET` 是用來簽章登入 cookie 的金鑰，外流的話等於任何人都能偽造登入狀態，所以務必透過 `wrangler secret put`、不要寫進任何檔案。
+
+5. **重新部署**（沿用你現有的 `wrangler deploy` 流程）。
+   為什麼：新的 R2 綁定與三個 secret 都要部署後才會生效。
+
+### 安全性摘要
+
+- 密碼只以 PBKDF2-SHA256（10 萬次疊代 + 隨機 salt）雜湊後的 secret 保存，永遠不進 git。
+- 登入用 HMAC 簽名的 `HttpOnly; Secure; SameSite=Strict` cookie，效期 12 小時；要讓所有裝置一次登出，只要重新設定 `SESSION_SECRET` 即可。
+- 所有會修改資料的後台 API 都需要同時通過登入 cookie 驗證 **和** CSRF token 比對（double-submit cookie），且一律在伺服器端重新檢查，前端的登入導轉只是體驗優化。
+- 登入失敗會做速率限制（同 IP 15 分鐘內錯 5 次就先擋），錯誤訊息不透露帳號是否存在，避免帳號列舉。
+- 上傳檔案會檢查實際檔案內容的 magic bytes（不是只看副檔名），只接受 PNG/JPG/GIF/WEBP/PDF，圖片上限 5MB、PDF 上限 20MB，檔名一律換成隨機字串存進 R2，避免路徑穿越或覆蓋既有檔案。
+- 公開的 `GET /api/posts`、`GET /api/posts/:slug` 一律不會回傳草稿（`status = 'draft'`），只有帶正確登入 cookie 的後台請求看得到草稿。
+- 文章 markdown 渲染沿用既有 `blog/post.html` 「先跳脫 HTML 再套版型」的邏輯（現在抽成共用的 `assets/markdown-render.js`），本來就會擋掉 `<script>`／HTML 注入，新舊文章共用同一份渲染器。
+
+### 已知限制 / 之後可以做的事
+
+- `wrangler.json` 裡 `"main": "worker.js"` 搭配 `pages_build_output_dir` 是 Cloudflare Pages 的 Advanced Mode，`worker.js` 會接管所有路由；這代表 `functions/api/engagement.js` 目前在正式環境其實不會被執行（是舊留下來的重複邏輯），這次沒有動它，之後有空可以考慮刪掉避免混淆。
+- 目前只做了「單一 admin 帳號」，沒有多使用者資料表；如果之後想開放多人共同管理，需要另外設計。
+- 本機的自動化測試是用假的 D1/R2/KV 模擬物件跑的（見下方版本歷程），還沒有連到你真實的 Cloudflare 資源；上面 5 個步驟做完後，還是建議用 `wrangler pages dev .`（wrangler 支援本機模擬 D1/R2）跑一次登入 → 發文 → 上傳圖片/PDF → 留言管理的完整流程，確認跟真實 D1/R2 接起來也正常。
+
 ## 常見問題
 
 ### 出現 "Failed to fetch"
@@ -184,3 +255,46 @@ wrangler pages dev .
 ### 2026-07-16（第七次追加：首頁瀏覽器分頁標題改名）
 
 - 調整 [index.html](index.html)：`<title>` 從「自我介紹」改為「艾倫の發糧倉」，瀏覽器分頁 / 書籤上顯示的網站名稱會跟著更新，頁面內容與其他版面、功能均未變動。
+
+### 2026-07-16（第八次追加：Admin 論壇化 —— 後台發文、上傳、留言管理）
+
+依照 `todo.txt` 的需求，這次在新分支 `feature/admin-forum-cms`（從既有的 `後端匿名留言功能api建置` 分支切出，`main` 完全未受影響）上，把網站從「純靜態 .md 文章」擴充成「有 admin 帳號可以直接在網站上發文、管理留言」的系統。詳細設定步驟與安全性摘要見上方新增的「Admin 後台」章節，這裡只記錄實際的檔案異動：
+
+- 新增 [migrations/0002_admin_cms.sql](migrations/0002_admin_cms.sql)：新增 `posts`（文章）與 `uploads`（上傳紀錄）兩張 D1 資料表；同樣邏輯也內建在執行期自動 `CREATE TABLE IF NOT EXISTS`（見 `server/posts.js`），跟現有留言功能的 schema 建置方式一致。
+- 調整 [wrangler.json](wrangler.json)：新增 `r2_buckets` 綁定（`UPLOADS` → `personal-website-uploads`），供圖片/PDF 上傳使用；bucket 需使用者自行用 `wrangler r2 bucket create` 建立。
+- 新增共用後端模組（`worker.js` 用 ES module import 方式載入，不需要額外建置流程）：
+  - [server/http.js](server/http.js)：`jsonResponse`／`readJson`／`normalizeText`／cookie 讀寫／base64url／hex 編碼等共用工具（部分從 `worker.js` 原本的邏輯抽出）。
+  - [server/auth.js](server/auth.js)：PBKDF2 密碼驗證、HMAC 簽名 session token 簽發/驗證、CSRF 雙重送出 token 檢查、`requireAdmin`、登入速率限制（沿用既有 `COMMENT_CACHE` KV，未設定時自動略過不擋）。
+  - [server/posts.js](server/posts.js)：文章 CRUD（`listPosts`／`getPostBySlug`／`createPost`／`updatePost`／`deletePost`），slug 由伺服器產生（`YYYYMMDD-隨機6碼`），不從中文標題轉寫。
+  - [server/uploads.js](server/uploads.js)：上傳檔案處理，檢查檔案 magic bytes（PNG/JPG/GIF/WEBP/PDF）、大小上限（圖片 5MB、PDF 20MB），寫入 R2 時用隨機檔名；另外提供 `/api/files/:key` 讀取端點。
+  - [server/comments-admin.js](server/comments-admin.js)：留言管理用的查詢（含隱藏留言）與可見度切換。
+- 調整 [worker.js](worker.js)：新增一個小型路由比對函式，掛上以下新端點（全部維持既有 `jsonResponse`／`cache-control: no-store`／`x-content-type-options: nosniff` 慣例）：
+  `POST /api/admin/login`、`POST /api/admin/logout`、`GET /api/admin/me`、
+  `GET /api/posts`、`GET /api/posts/:slug`、
+  `POST /api/admin/posts`、`PUT /api/admin/posts/:slug`、`DELETE /api/admin/posts/:slug`、
+  `POST /api/admin/uploads`、`GET /api/files/:key`、
+  `GET /api/admin/comments`、`POST /api/admin/comments/:id/visibility`。
+  既有的 `/api/engagement` 邏輯完全沒有更動，只是被搬到同一個路由函式裡統一分派。
+- 新增 [assets/markdown-render.js](assets/markdown-render.js)：把原本寫死在 `blog/post.html` inline `<script>` 裡的 markdown 解析邏輯（front matter、行內語法、表格、PDF 內嵌、程式碼區塊等，約 300 行）抽成共用模組（`window.MarkdownRender`），供文章頁與後台編輯器共用同一套渲染規則，避免預覽跟正式顯示結果不一致。
+- 調整 [blog/post.html](blog/post.html)：改為呼叫 `assets/markdown-render.js`；新增 `?source=db&slug=...` 讀取模式（呼叫 `GET /api/posts/:slug`），原本的 `?file=xxx.md` 靜態檔模式維持不變；後台文章的留言/瀏覽/按讚 page key 改用 `post:db:{slug}`，靜態文章維持原本的 `post:posts/{檔名}`，兩者不會互相衝突。
+- 新增 [blog/admin/login.html](blog/admin/login.html)：admin 登入頁，成功後導向 `editor.html`。
+- 新增 [blog/admin/editor.html](blog/admin/editor.html)：後台主頁面，整合「發文/編輯表單＋即時 markdown 預覽」「插入圖片/PDF 按鈕（上傳後自動插入游標位置）」「文章管理列表（編輯／刪除）」「留言管理（依頁面 key 顯示留言並可切換隱藏/顯示）」與「登出」。
+- 調整 [index.html](index.html)：`loadMarkdownPosts()` 新增一段容錯的 `fetch('/api/posts?status=published')`，成功時把 D1 文章併入既有的靜態文章清單一起排序顯示；抓不到（非 Cloudflare 環境、D1 尚未設定等）時安靜忽略、只顯示靜態文章，不影響現有行為。
+- 新增 [scripts/hash-password.mjs](scripts/hash-password.mjs)：本機用的密碼雜湊小工具（純 Node 內建 `crypto`，無外部套件），用來產生 `ADMIN_PASSWORD_HASH` secret 的值，密碼明文完全不會離開執行者自己的電腦。
+- 說明：這次沒有 Cloudflare 帳號權限可以直接操作 D1/R2/secrets，所有新程式碼都只在本機做過語法層面的檢查與手動走查（本機沒有安裝 Node.js，無法執行 `node --check`，改以人工覆核 import/export、括號配對與路由邏輯）；沒有安裝瀏覽器自動化工具，也沒辦法端對端啟動 `wrangler pages dev` 實際測試登入/發文/上傳流程。上方「Admin 後台」章節列出的 5 個設定步驟與驗證流程，需要你本機依序執行後才能確認整套功能真的可用，這點如實告知。
+
+### 2026-07-16（第九次追加：安裝 Node.js 後補做完整測試，並修正一個真的測出來的 bug）
+
+使用者安裝好 Node.js、建立好 R2 bucket（實際名稱是 `personal-website`，不是先前假設的 `personal-website-uploads`）並已有既有 D1 之後，回頭把上一輪「沒辦法測試」的部分實際補測了一次：
+
+- 調整 [wrangler.json](wrangler.json)：`r2_buckets` 的 `bucket_name` 從 `personal-website-uploads` 改成使用者實際建立的 `personal-website`，並同步修正 [README.md](README.md) 裡對應的建立指令與說明。
+- 用 `node --check` 對 `server/*.js`、`worker.js`、`assets/markdown-render.js`、`scripts/hash-password.mjs` 全部重新做語法檢查，全數通過。
+- 在 scratchpad 寫了一組不進 repo 的測試腳本，用假的 D1／R2／KV 物件模擬 Cloudflare 環境，實際呼叫（而不只是讀程式碼猜測）：
+  - `server/auth.js`：PBKDF2 密碼雜湊正確/錯誤密碼判斷、session token 簽發與驗證（含被竄改、換了 `SESSION_SECRET` 這兩種偽造情境都會被拒絕）、CSRF token 比對。
+  - `server/posts.js`：建立/更新/發佈/刪除文章、草稿不會被公開查詢看到、admin 查詢看得到草稿。
+  - `worker.js` 整條路由：模擬「沒設定 admin secret → 503」「密碼錯 → 401」「登入成功 → 拿到 session + CSRF 兩個 cookie」「帶 cookie 但沒帶 CSRF header 建立文章 → 403」「登入後成功建立文章 → 公開 `/api/posts` 看得到」「沒登入呼叫 DELETE → 401」，共 28 項全部通過。
+  - `assets/markdown-render.js`：確認標題／清單／表格／程式碼區塊／圖片／PDF 內嵌／引用都能正確轉換，特別驗證了 `<script>alert(1)</script>` 這種嘗試注入的文字會被跳脫成純文字而不是被當成 HTML 執行。
+  - `server/uploads.js`：確認合法 PNG 會通過並存成隨機檔名、把純文字檔改副檔名偽裝成 `.png` 會被 magic bytes 檢查擋下、沒有 R2 綁定時回 503、`../../etc/passwd` 這種路徑穿越的檔案 key 會被拒絕。
+  - 以上總共 44 項測試全部通過。
+- **在補測 `scripts/hash-password.mjs` 時，真的測出一個 bug 並修好了**：原本的寫法是每次詢問密碼都重新 `createInterface()` 開一個新的 readline 介面，結果在（測試用的）非互動輸入情境下，第二次詢問「再輸入一次確認」永遠讀不到輸入、卡住不會印出結果。改成整支腳本只建立一個 readline 介面、用 `rl[Symbol.asyncIterator]()` 依序讀兩行輸入之後，重新測試「密碼相符」「密碼不相符」「密碼留空」三種情境都能正確印出訊息或產生 hash，並且額外驗證了產生出來的 hash 字串丟進 `server/auth.js` 的 `verifyPassword()` 真的能正確判斷密碼對錯。
+- 說明：因為工具限制，這次的測試都是用模擬物件（假的 D1/R2/KV）跑的，還沒有連到你真實的 Cloudflare 資源，也還沒有實際打開瀏覽器點過登入頁/後台頁面；`README.md`「已知限制」段落已同步更新，建議你依序做完設定步驟後，用 `wrangler pages dev .` 接上真實模擬環境跑一次完整流程。

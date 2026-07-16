@@ -1129,6 +1129,27 @@
         console.warn("下列文章檔案讀取失敗:", missingFiles.join(", "));
       }
 
+      // 後台（D1）文章是選配的：沒有 Cloudflare API 或尚未發文時安靜略過，只顯示既有的靜態文章。
+      try {
+        const dbResponse = await fetch("/api/posts?status=published", { cache: "no-store" });
+        if (dbResponse.ok) {
+          const dbData = await dbResponse.json();
+          if (dbData?.ok && Array.isArray(dbData.posts)) {
+            for (const post of dbData.posts) {
+              posts.push({
+                date: post.date || "0000-00-00",
+                title: post.title || "未命名文章",
+                category: post.category || "未分類",
+                excerpt: post.excerpt || "尚無摘要",
+                url: `blog/post.html?source=db&slug=${encodeURIComponent(post.slug)}`
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("後台文章讀取失敗，僅顯示靜態文章：", error);
+      }
+
       const categories = Array.from(new Set(posts.map((post) => post.category || "未分類"))).sort((a, b) => a.localeCompare(b, "zh-Hant"));
 
       return {
