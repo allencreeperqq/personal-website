@@ -48,7 +48,6 @@
       '<div class="cf-engagement__header">',
       '  <div>',
       '    <h2 class="cf-engagement__title">匿名留言 / 按讚 / 瀏覽量</h2>',
-      '    <p class="cf-engagement__subtitle">資料會寫入 Cloudflare D1；前端只負責送出與顯示，留言內容會以純文字方式渲染。</p>',
       '  </div>',
       '  <div class="cf-engagement__meter">',
       '    <span class="cf-pill">瀏覽 <strong data-role="views">0</strong></span>',
@@ -177,9 +176,12 @@
     const slot = container.querySelector('[data-role="turnstile"]');
     if (!slot) return null;
     if (!siteKey) {
-      slot.innerHTML = '<p class="cf-empty">Turnstile 尚未設定，留言仍可在開發模式下測試。</p>';
+      slot.innerHTML = "";
+      slot.hidden = true;
       return null;
     }
+
+    slot.hidden = false;
 
     if (window.turnstile) {
       return window.turnstile.render(slot, { sitekey: siteKey, theme: "dark" });

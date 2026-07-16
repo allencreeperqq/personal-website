@@ -70,6 +70,9 @@ wrangler pages dev .
 - 調整 [worker.js](worker.js)：新增 30 秒內相同留言去重，避免重複送出或網路重試造成雙寫。
 - 調整 [assets/engagement.css](assets/engagement.css)：補上同步狀態與重新整理按鈕的樣式，讓互動區的資訊層級更清楚。
 - 調整 [README.md](README.md)：把這次留言防重送、同步狀態與互動區可見性提升的細節一併記錄。
+- 調整 [assets/engagement.js](assets/engagement.js)：移除互動區說明文案與 Turnstile 未設定提示文字，讓介面更精簡。
+- 調整 [index.html](index.html) 與 [blog/post.html](blog/post.html)：把留言互動區改為獨立分區卡片，版面關係與既有內容區塊一致，不再有疊在其他區域上的視覺感。
+- 調整 [index.html](index.html) 與 [blog/post.html](blog/post.html)：左下角新增「版本 / 最後更新時間」固定標註。
 
 - 調整 `index.html`：`全部貼文列表` 新增分類下拉選單，可先選擇要預覽的文章分類。
 - 調整 `index.html`：`全部貼文列表` 改為分頁顯示，每頁最多 8 篇文章，超過後可切換到下一頁，不會讓單一頁面超過 8 篇。

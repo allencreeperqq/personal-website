@@ -517,6 +517,23 @@
       text-align: right;
     }
 
+    .site-version-note {
+      position: fixed;
+      left: 12px;
+      bottom: 10px;
+      margin: 0;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      background: rgba(2, 6, 23, 0.62);
+      color: #cbd5e1;
+      font-size: 0.76rem;
+      line-height: 1.35;
+      z-index: 95;
+      max-width: min(72vw, 420px);
+      text-align: left;
+    }
+
     .welcome-modal {
       position: fixed;
       inset: 0;
@@ -623,6 +640,13 @@
 
       .photo-credit {
         right: 8px;
+        bottom: 8px;
+        max-width: 84vw;
+        font-size: 0.72rem;
+      }
+
+      .site-version-note {
+        left: 8px;
         bottom: 8px;
         max-width: 84vw;
         font-size: 0.72rem;
@@ -742,8 +766,9 @@
         </article>
 
         <article class="content-block full-width">
+          <h3>留言互動區</h3>
           <div
-            class="cf-engagement"
+            class="cf-engagement cf-engagement--embedded"
             data-page-key="page:index"
             data-page-title="首頁"
             data-turnstile-site-key=""
@@ -1159,6 +1184,7 @@
     renderBlogPosts();
   </script>
 
+  <p class="site-version-note">版本：v2026.07.16 | 最後更新：2026-07-16</p>
   <p class="photo-credit">川崎工業區夜景 攝於2025/6/12 作者: 潘宇綸</p>
 </body>
 </html>

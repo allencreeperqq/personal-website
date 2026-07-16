@@ -9,6 +9,10 @@
   gap: 14px;
 }
 
+.cf-engagement--embedded {
+  margin-top: 10px;
+}
+
 .cf-engagement__header {
   display: flex;
   flex-wrap: wrap;

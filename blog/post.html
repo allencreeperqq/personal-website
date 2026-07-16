@@ -228,6 +228,20 @@
       color: #fca5a5;
     }
 
+    .post-engagement-wrap {
+      margin-top: 20px;
+      border: 1px solid rgba(125, 211, 252, 0.28);
+      border-radius: 12px;
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.76), rgba(30, 41, 59, 0.58));
+      padding: 14px;
+    }
+
+    .post-engagement-title {
+      margin: 0;
+      color: #dbeafe;
+      font-size: 1.06rem;
+    }
+
     .photo-credit {
       position: fixed;
       right: 12px;
@@ -245,9 +259,33 @@
       text-align: right;
     }
 
+    .site-version-note {
+      position: fixed;
+      left: 12px;
+      bottom: 10px;
+      margin: 0;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      background: rgba(2, 6, 23, 0.62);
+      color: #cbd5e1;
+      font-size: 0.76rem;
+      line-height: 1.35;
+      z-index: 95;
+      max-width: min(72vw, 420px);
+      text-align: left;
+    }
+
     @media (max-width: 560px) {
       .photo-credit {
         right: 8px;
+        bottom: 8px;
+        max-width: 84vw;
+        font-size: 0.72rem;
+      }
+
+      .site-version-note {
+        left: 8px;
         bottom: 8px;
         max-width: 84vw;
         font-size: 0.72rem;
@@ -261,16 +299,20 @@
     <h1 id="post-title" class="post-title">載入中...</h1>
     <div id="post-meta" class="post-meta"></div>
     <article id="post-body" class="post-body"></article>
-    <section
-      id="post-engagement"
-      class="cf-engagement"
-      data-page-key=""
-      data-page-title=""
-      data-turnstile-site-key=""
-    ></section>
+    <section class="post-engagement-wrap">
+      <h2 class="post-engagement-title">留言互動區</h2>
+      <section
+        id="post-engagement"
+        class="cf-engagement cf-engagement--embedded"
+        data-page-key=""
+        data-page-title=""
+        data-turnstile-site-key=""
+      ></section>
+    </section>
     <p id="error-text" class="error" hidden></p>
   </main>
 
+  <p class="site-version-note">版本：v2026.07.16 | 最後更新：2026-07-16</p>
   <p class="photo-credit">川崎工業區夜景 攝於2025/6/12 作者: 潘宇綸</p>
 
   <script>
