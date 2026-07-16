@@ -74,10 +74,10 @@ wrangler pages dev .
 - 調整 [index.html](index.html) 與 [blog/post.html](blog/post.html)：把留言互動區改為獨立分區卡片，版面關係與既有內容區塊一致，不再有疊在其他區域上的視覺感。
 - 調整 [index.html](index.html) 與 [blog/post.html](blog/post.html)：左下角新增「版本 / 最後更新時間」固定標註。
 
-- 調整 `index.html`：`全部貼文列表` 新增分類下拉選單，可先選擇要預覽的文章分類。
-- 調整 `index.html`：`全部貼文列表` 改為分頁顯示，每頁最多 8 篇文章，超過後可切換到下一頁，不會讓單一頁面超過 8 篇。
-- 調整 `index.html`：分頁與分類篩選會同步重算目前列表，避免切換分類後仍停留在超出範圍的頁碼。
-- 調整 `index.html`：歡迎視窗文字補上 Cloudflare 正常運作說明，並確認首頁與文章頁維持純前端、相對路徑 fetch 與 `.nojekyll` 的靜態部署相容方式，可正常部署到 Cloudflare Pages。
+- 調整 [index.html](index.html)：全部貼文列表新增分類下拉選單，可先選擇要預覽的文章分類。
+- 調整 [index.html](index.html)：全部貼文列表改為分頁顯示，每頁最多 8 篇文章，超過後可切換到下一頁，不會讓單一頁面超過 8 篇。
+- 調整 [index.html](index.html)：分頁與分類篩選會同步重算目前列表，避免切換分類後仍停留在超出範圍的頁碼。
+- 調整 [index.html](index.html)：歡迎視窗文字補上 Cloudflare 正常運作說明，並確認首頁與文章頁維持純前端、相對路徑 fetch 與 `.nojekyll` 的靜態部署相容方式，可正常部署到 Cloudflare Pages。
 
 ### 2026-05-10
 
