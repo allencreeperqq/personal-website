@@ -177,6 +177,10 @@ async function rateLimitComment(env, request, pageKey) {
 }
 
 async function handleEngagement(request, env) {
+  if (!env.DB) {
+    return jsonResponse({ ok: false, error: "D1 綁定尚未設定，請先加入實際 database id。" }, 503);
+  }
+
   await ensureSchema(env);
 
   const body = request.method === "POST" ? await readJson(request) : null;

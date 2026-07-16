@@ -3,17 +3,19 @@ https://allencreeperqq.github.io/personal-website/
 
 ## Cloudflare 全端版本
 
-這個版本把首頁與文章頁直接接到 Cloudflare Pages Functions，留言、按讚與瀏覽統計都寫入 D1，並保留 KV 與 Turnstile 的擴充點。
+這個版本把首頁與文章頁接到 Cloudflare Pages Functions，留言、按讚與瀏覽統計預留給 D1，並保留 KV 與 Turnstile 的擴充點。
 
 ### 初始化指令
 
-1. 建立 D1 資料庫後，先套用 migration：
+1. 先完成網站部署；若要啟用留言、按讚與瀏覽統計，再建立 D1 資料庫並套用 migration：
 
 ```powershell
 wrangler d1 migrations apply personal_website
 ```
 
-1. 建立 KV namespace 後，把 ID 填入 [wrangler.json](wrangler.json) 的 `COMMENT_CACHE`。
+1. 把實際 D1 database id 填回 [wrangler.json](wrangler.json) 的 `DB` 綁定後，再重新部署。
+
+1. KV namespace 目前是選配；如果之後要加留言防刷限流，再把 namespace ID 補進 [wrangler.json](wrangler.json)。
 1. 若要啟用留言防機器人，先在 Cloudflare 建立 Turnstile，再執行：
 
 ```powershell
