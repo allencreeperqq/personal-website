@@ -180,3 +180,7 @@ wrangler pages dev .
 - 調整 [index.html](index.html)：`.fun-box` 內部原本只有一段文字，現在改為「對話泡泡文字＋kanatachan 圖片」的 `.fun-mascot` 區塊（`role="button" tabindex="0"`，可滑鼠點擊也可用 Tab 鍵移到吉祥物身上後按 Enter / 空白鍵觸發），下方仍保留原本的「再抽一次」按鈕，兩種操作方式共用同一組抽籤邏輯。
 - 調整 [index.html](index.html)：JS 端把原本寫在按鈕點擊事件裡的抽籤邏輯抽成獨立的 `rollQuote()` 函式，並加上 `rolling` 旗標避免連續快速點擊時動畫互相打斷；`rollQuote()` 同時綁定到「再抽一次」按鈕與吉祥物本身（`click` 與 `keydown`），點吉祥物或按按鈕效果一致，都會更新對話泡泡文字、已抽次數與 `localStorage` 計數。
 - 說明：吉祥物互動同樣完全在瀏覽器端運作，不會呼叫任何後端 API。已用 `py -m http.server 5500` 確認 `index.html`（HTTP 200）與新圖片 `assets/kanatasochan.png`（HTTP 200）都能正常載入，且 `.fun-mascot` 相關元素有正確輸出在 HTML 中；受限於本機沒有瀏覽器截圖工具，未能實際點擊測試漂浮動畫與對話泡泡切換效果，建議之後實機瀏覽確認。
+
+### 2026-07-16（第七次追加：首頁瀏覽器分頁標題改名）
+
+- 調整 [index.html](index.html)：`<title>` 從「自我介紹」改為「艾倫の發糧倉」，瀏覽器分頁 / 書籤上顯示的網站名稱會跟著更新，頁面內容與其他版面、功能均未變動。
