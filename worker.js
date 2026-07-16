@@ -45,26 +45,32 @@ async function hashText(text) {
 async function ensureSchema(env) {
   if (!schemaReady) {
     // D1 的資料表只需要建立一次；之後每次請求都直接沿用相同 schema。
-    schemaReady = env.DB.exec(`
-      CREATE TABLE IF NOT EXISTS page_stats (
-        page_key TEXT PRIMARY KEY,
-        views INTEGER NOT NULL DEFAULT 0,
-        likes INTEGER NOT NULL DEFAULT 0,
-        comments INTEGER NOT NULL DEFAULT 0,
-        updated_at TEXT NOT NULL
-      );
+    schemaReady = (async () => {
+      await env.DB.prepare(`
+        CREATE TABLE IF NOT EXISTS page_stats (
+          page_key TEXT PRIMARY KEY,
+          views INTEGER NOT NULL DEFAULT 0,
+          likes INTEGER NOT NULL DEFAULT 0,
+          comments INTEGER NOT NULL DEFAULT 0,
+          updated_at TEXT NOT NULL
+        )
+      `).run();
 
-      CREATE TABLE IF NOT EXISTS comments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        page_key TEXT NOT NULL,
-        nickname TEXT NOT NULL,
-        content TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        visible INTEGER NOT NULL DEFAULT 1
-      );
+      await env.DB.prepare(`
+        CREATE TABLE IF NOT EXISTS comments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          page_key TEXT NOT NULL,
+          nickname TEXT NOT NULL,
+          content TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          visible INTEGER NOT NULL DEFAULT 1
+        )
+      `).run();
 
-      CREATE INDEX IF NOT EXISTS idx_comments_page_id ON comments(page_key, id DESC);
-    `);
+      await env.DB.prepare(`
+        CREATE INDEX IF NOT EXISTS idx_comments_page_id ON comments(page_key, id DESC)
+      `).run();
+    })();
   }
 
   await schemaReady;
@@ -177,71 +183,79 @@ async function rateLimitComment(env, request, pageKey) {
 }
 
 async function handleEngagement(request, env) {
-  if (!env.DB) {
-    return jsonResponse({ ok: false, error: "D1 綁定尚未設定，請先加入實際 database id。" }, 503);
-  }
-
-  await ensureSchema(env);
-
-  const body = request.method === "POST" ? await readJson(request) : null;
-  const pageKey = getPageKey(request, body);
-  if (!pageKey) {
-    return jsonResponse({ ok: false, error: "缺少 page key。" }, 400);
-  }
-
-  if (request.method === "GET") {
-    const snapshot = await getPageSnapshot(env, pageKey);
-    return jsonResponse({ ok: true, pageKey, ...snapshot });
-  }
-
-  const action = normalizeText(body?.action, 16);
-  if (!action) {
-    return jsonResponse({ ok: false, error: "缺少 action。" }, 400);
-  }
-
-  if (action === "view") {
-    await bumpStats(env, pageKey, { views: 1 });
-    const snapshot = await getPageSnapshot(env, pageKey);
-    return jsonResponse({ ok: true, pageKey, ...snapshot });
-  }
-
-  if (action === "like") {
-    await bumpStats(env, pageKey, { likes: 1 });
-    const snapshot = await getPageSnapshot(env, pageKey);
-    return jsonResponse({ ok: true, pageKey, ...snapshot });
-  }
-
-  if (action === "comment") {
-    const nickname = normalizeText(body?.nickname, 24, "匿名");
-    const content = normalizeText(body?.content, 500, "");
-
-    if (!content) {
-      return jsonResponse({ ok: false, error: "留言內容不能為空。" }, 400);
+  try {
+    if (!env.DB) {
+      return jsonResponse({ ok: false, error: "D1 綁定尚未設定，請先加入實際 database id。" }, 503);
     }
 
-    const throttle = await rateLimitComment(env, request, pageKey);
-    if (!throttle.ok) {
-      return jsonResponse({ ok: false, error: throttle.error }, 429);
+    await ensureSchema(env);
+
+    const body = request.method === "POST" ? await readJson(request) : null;
+    const pageKey = getPageKey(request, body);
+    if (!pageKey) {
+      return jsonResponse({ ok: false, error: "缺少 page key。" }, 400);
     }
 
-    const turnstile = await verifyTurnstile(env, request, body?.turnstileToken);
-    if (!turnstile.ok) {
-      return jsonResponse({ ok: false, error: turnstile.error }, 400);
+    if (request.method === "GET") {
+      const snapshot = await getPageSnapshot(env, pageKey);
+      return jsonResponse({ ok: true, pageKey, ...snapshot });
     }
 
-    const now = new Date().toISOString();
-    // 留言內容只存純文字，前端顯示時用 textContent 呈現，避免把 HTML 或腳本注入頁面。
-    await env.DB.prepare(`
-      INSERT INTO comments (page_key, nickname, content, created_at, visible)
-      VALUES (?, ?, ?, ?, 1)
-    `).bind(pageKey, nickname, content, now).run();
+    const action = normalizeText(body?.action, 16);
+    if (!action) {
+      return jsonResponse({ ok: false, error: "缺少 action。" }, 400);
+    }
 
-    await bumpStats(env, pageKey, { comments: 1 });
-    const snapshot = await getPageSnapshot(env, pageKey);
-    return jsonResponse({ ok: true, pageKey, ...snapshot });
+    if (action === "view") {
+      await bumpStats(env, pageKey, { views: 1 });
+      const snapshot = await getPageSnapshot(env, pageKey);
+      return jsonResponse({ ok: true, pageKey, ...snapshot });
+    }
+
+    if (action === "like") {
+      await bumpStats(env, pageKey, { likes: 1 });
+      const snapshot = await getPageSnapshot(env, pageKey);
+      return jsonResponse({ ok: true, pageKey, ...snapshot });
+    }
+
+    if (action === "comment") {
+      const nickname = normalizeText(body?.nickname, 24, "匿名");
+      const content = normalizeText(body?.content, 500, "");
+
+      if (!content) {
+        return jsonResponse({ ok: false, error: "留言內容不能為空。" }, 400);
+      }
+
+      const throttle = await rateLimitComment(env, request, pageKey);
+      if (!throttle.ok) {
+        return jsonResponse({ ok: false, error: throttle.error }, 429);
+      }
+
+      const turnstile = await verifyTurnstile(env, request, body?.turnstileToken);
+      if (!turnstile.ok) {
+        return jsonResponse({ ok: false, error: turnstile.error }, 400);
+      }
+
+      const now = new Date().toISOString();
+      // 留言內容只存純文字，前端顯示時用 textContent 呈現，避免把 HTML 或腳本注入頁面。
+      await env.DB.prepare(`
+        INSERT INTO comments (page_key, nickname, content, created_at, visible)
+        VALUES (?, ?, ?, ?, 1)
+      `).bind(pageKey, nickname, content, now).run();
+
+      await bumpStats(env, pageKey, { comments: 1 });
+      const snapshot = await getPageSnapshot(env, pageKey);
+      return jsonResponse({ ok: true, pageKey, ...snapshot });
+    }
+
+    return jsonResponse({ ok: false, error: "不支援的 action。" }, 400);
+  } catch (error) {
+    console.error("engagement API error", error);
+    return jsonResponse({
+      ok: false,
+      error: `伺服器處理留言時發生錯誤：${error instanceof Error ? error.message : String(error)}`
+    }, 500);
   }
-
-  return jsonResponse({ ok: false, error: "不支援的 action。" }, 400);
 }
 
 export default {
