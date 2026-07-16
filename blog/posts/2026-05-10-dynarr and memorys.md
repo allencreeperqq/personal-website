@@ -2,7 +2,7 @@
 title: 指標與陣列&記憶體配置
 date: 2026-05-10
 category: 作業
-excerpt: 無
+excerpt: 這是一個平常作業的紀錄
 ---
 
 

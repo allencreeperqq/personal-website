@@ -361,6 +361,74 @@
       gap: 10px;
     }
 
+    .all-post-controls {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid rgba(125, 211, 252, 0.22);
+      border-radius: 10px;
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.62), rgba(30, 41, 59, 0.46));
+    }
+
+    .all-post-filter {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #dbeafe;
+      font-size: 0.92rem;
+    }
+
+    .all-post-filter select {
+      min-width: 180px;
+      max-width: 100%;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.9);
+      color: #e2e8f0;
+      padding: 8px 10px;
+      font: inherit;
+    }
+
+    .all-post-pagination {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .all-post-pagination button {
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 8px;
+      background: rgba(30, 41, 59, 0.82);
+      color: #e2e8f0;
+      padding: 7px 11px;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .all-post-pagination button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: rgba(125, 211, 252, 0.65);
+      color: #bae6fd;
+    }
+
+    .all-post-pagination button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .all-post-page-info {
+      color: #bfdbfe;
+      font-size: 0.88rem;
+      white-space: nowrap;
+    }
+
     .all-post-item {
       border: 1px solid rgba(125, 211, 252, 0.3);
       border-radius: 10px;
@@ -535,6 +603,19 @@
         grid-template-columns: 1fr;
       }
 
+      .all-post-controls {
+        align-items: stretch;
+      }
+
+      .all-post-filter,
+      .all-post-pagination {
+        width: 100%;
+      }
+
+      .all-post-pagination {
+        justify-content: space-between;
+      }
+
       .all-post-side {
         justify-items: start;
       }
@@ -551,7 +632,7 @@
 <body>
   <section class="welcome-modal" id="welcomeModal" aria-live="polite" aria-label="進站歡迎視窗">
     <div class="welcome-modal-card">
-      <h2 class="welcome-modal-title">歡迎來到我的部落格</h2>
+      <h2 class="welcome-modal-title">歡迎來到我的部落格! 目前網頁已經在 Cloudflare 上面正常運作!</h2>
       <div class="welcome-modal-actions">
         <button class="welcome-modal-close" type="button" id="closeWelcomeModal" aria-label="關閉歡迎訊息">開始瀏覽</button>
       </div>
@@ -643,6 +724,19 @@
 
         <article class="content-block full-width">
           <h3>全部貼文列表</h3>
+          <div class="all-post-controls">
+            <label class="all-post-filter" for="post-category-filter">
+              預覽分類
+              <select id="post-category-filter">
+                <option value="all">全部分類</option>
+              </select>
+            </label>
+            <div class="all-post-pagination" aria-label="全部貼文分頁控制">
+              <button type="button" id="post-prev-page">上一頁</button>
+              <span class="all-post-page-info" id="post-page-info">第 1 頁 / 共 1 頁</span>
+              <button type="button" id="post-next-page">下一頁</button>
+            </div>
+          </div>
           <ul id="all-post-list" class="all-post-list"></ul>
         </article>
 
@@ -664,6 +758,14 @@
     const RECENT_DOING_TEXT_PATH = "content/recent-doing.txt";
     const SELF_INTRO_TEXT_PATH = "content/self-intro.txt";
     const RECENT_BLOG_LIMIT = 4;
+    const POSTS_PER_PAGE = 8;
+
+    const allPostState = {
+      posts: [],
+      category: "all",
+      page: 1,
+      categories: []
+    };
 
     function escapeHtml(input) {
       return String(input)
@@ -817,42 +919,191 @@
         console.warn("下列文章檔案讀取失敗:", missingFiles.join(", "));
       }
 
+      const categories = Array.from(new Set(posts.map((post) => post.category || "未分類"))).sort((a, b) => a.localeCompare(b, "zh-Hant"));
+
       return {
         posts: posts.sort((a, b) => String(b.date).localeCompare(String(a.date))),
-        missingFiles
+        missingFiles,
+        categories
       };
+    }
+
+    function getFilteredPosts() {
+      if (allPostState.category === "all") {
+        return allPostState.posts;
+      }
+
+      return allPostState.posts.filter((post) => (post.category || "未分類") === allPostState.category);
+    }
+
+    function getTotalPages(count) {
+      return Math.max(1, Math.ceil(count / POSTS_PER_PAGE));
+    }
+
+    function syncPageBounds(filteredPosts) {
+      const totalPages = getTotalPages(filteredPosts.length);
+      if (allPostState.page > totalPages) {
+        allPostState.page = totalPages;
+      }
+      if (allPostState.page < 1) {
+        allPostState.page = 1;
+      }
+      return totalPages;
+    }
+
+    function renderPostCategoryFilter() {
+      const select = document.getElementById("post-category-filter");
+      if (!select) return;
+
+      const currentValue = allPostState.category;
+      const options = [
+        '<option value="all">全部分類</option>',
+        ...allPostState.categories.map((category) => {
+          const safeCategory = escapeHtml(category);
+          return `<option value="${safeCategory}">${safeCategory}</option>`;
+        })
+      ];
+
+      select.innerHTML = options.join("");
+      select.value = allPostState.categories.includes(currentValue) ? currentValue : "all";
+    }
+
+    function renderAllPostList() {
+      const listContainer = document.getElementById("all-post-list");
+      const pageInfo = document.getElementById("post-page-info");
+      const prevButton = document.getElementById("post-prev-page");
+      const nextButton = document.getElementById("post-next-page");
+      if (!listContainer || !pageInfo || !prevButton || !nextButton) return;
+
+      const filteredPosts = getFilteredPosts();
+      const totalPages = syncPageBounds(filteredPosts);
+      const startIndex = (allPostState.page - 1) * POSTS_PER_PAGE;
+      const pagePosts = filteredPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
+
+      listContainer.innerHTML = "";
+
+      if (!pagePosts.length) {
+        const emptyItem = document.createElement("li");
+        emptyItem.className = "all-post-note";
+        emptyItem.textContent = filteredPosts.length ? "目前這一頁沒有文章。" : "目前沒有符合目前分類的文章。";
+        listContainer.appendChild(emptyItem);
+      } else {
+        pagePosts.forEach((post) => {
+          const validUrl = typeof post.url === "string" && post.url.trim() !== "";
+
+          const item = document.createElement("li");
+          item.className = "all-post-item";
+
+          const main = document.createElement("div");
+          main.className = "all-post-main";
+
+          const itemLink = document.createElement("a");
+          itemLink.className = "all-post-title";
+          itemLink.href = validUrl ? post.url : "#";
+          itemLink.textContent = post.title || "未命名文章";
+          if (!validUrl) {
+            itemLink.textContent = `${itemLink.textContent}（連結待補）`;
+          }
+
+          const sub = document.createElement("p");
+          sub.className = "all-post-sub";
+          sub.textContent = post.excerpt || "尚無摘要";
+
+          const side = document.createElement("div");
+          side.className = "all-post-side";
+
+          const date = document.createElement("span");
+          date.className = "all-post-date";
+          date.textContent = post.date || "未設定日期";
+
+          const tag = document.createElement("span");
+          tag.className = "all-post-tag";
+          tag.textContent = post.category || "未分類";
+
+          main.appendChild(itemLink);
+          main.appendChild(sub);
+          side.appendChild(date);
+          side.appendChild(tag);
+          item.appendChild(main);
+          item.appendChild(side);
+          listContainer.appendChild(item);
+        });
+      }
+
+      pageInfo.textContent = `第 ${allPostState.page} 頁 / 共 ${totalPages} 頁`;
+      prevButton.disabled = allPostState.page <= 1;
+      nextButton.disabled = allPostState.page >= totalPages;
+    }
+
+    function attachPostControls() {
+      const select = document.getElementById("post-category-filter");
+      const prevButton = document.getElementById("post-prev-page");
+      const nextButton = document.getElementById("post-next-page");
+
+      if (select) {
+        select.addEventListener("change", () => {
+          allPostState.category = select.value || "all";
+          allPostState.page = 1;
+          renderAllPostList();
+        });
+      }
+
+      if (prevButton) {
+        prevButton.addEventListener("click", () => {
+          allPostState.page = Math.max(1, allPostState.page - 1);
+          renderAllPostList();
+        });
+      }
+
+      if (nextButton) {
+        nextButton.addEventListener("click", () => {
+          const totalPages = getTotalPages(getFilteredPosts().length);
+          allPostState.page = Math.min(totalPages, allPostState.page + 1);
+          renderAllPostList();
+        });
+      }
     }
 
     async function renderBlogPosts() {
       const container = document.getElementById("blog-list");
-      const listContainer = document.getElementById("all-post-list");
       const template = document.getElementById("blog-item-template");
-      if (!container || !listContainer || !template) return;
+      if (!container || !template) return;
+      const listContainer = document.getElementById("all-post-list");
 
       let sortedPosts = [];
       let missingFiles = [];
+      let categories = [];
       try {
         const result = await loadMarkdownPosts();
         sortedPosts = result.posts;
         missingFiles = result.missingFiles;
+        categories = result.categories;
       } catch (error) {
         container.innerHTML = `<p class="blog-excerpt">Blog 讀取失敗：${error.message}<br>提示：本機請用伺服器開啟（例如 Live Server 或 http.server）。</p>`;
-        listContainer.innerHTML = "<li>無法載入貼文列表</li>";
+        const listContainer = document.getElementById("all-post-list");
+        if (listContainer) {
+          listContainer.innerHTML = "<li>無法載入貼文列表</li>";
+        }
         return;
       }
 
+      allPostState.posts = sortedPosts;
+      allPostState.categories = categories;
+      allPostState.category = categories.includes(allPostState.category) ? allPostState.category : "all";
+
       container.innerHTML = "";
-      listContainer.innerHTML = "";
       if (missingFiles.length) {
         const warn = document.createElement("p");
         warn.className = "blog-excerpt";
         warn.textContent = `部分文章尚未讀取成功：${missingFiles.join(", ")}`;
         container.appendChild(warn);
 
-        const warnItem = document.createElement("li");
-        warnItem.className = "all-post-note";
-        warnItem.textContent = `部分文章尚未讀取成功：${missingFiles.join(", ")}`;
-        listContainer.appendChild(warnItem);
+        if (listContainer) {
+          const warnItem = document.createElement("li");
+          warnItem.className = "all-post-note";
+          warnItem.textContent = `部分文章尚未讀取成功：${missingFiles.join(", ")}`;
+          listContainer.insertAdjacentElement("beforebegin", warnItem);
+        }
       }
 
       if (!sortedPosts.length) {
@@ -861,12 +1112,15 @@
         empty.textContent = "目前沒有可顯示的文章。";
         container.appendChild(empty);
 
-        const emptyItem = document.createElement("li");
-        emptyItem.className = "all-post-note";
-        emptyItem.textContent = "目前沒有可顯示的文章。";
-        listContainer.appendChild(emptyItem);
+        if (listContainer) {
+          listContainer.innerHTML = '<li class="all-post-note">目前沒有可顯示的文章。</li>';
+        }
         return;
       }
+
+      renderPostCategoryFilter();
+      attachPostControls();
+      renderAllPostList();
 
       const recentPosts = sortedPosts.slice(0, RECENT_BLOG_LIMIT);
 
@@ -887,47 +1141,6 @@
 
         container.appendChild(node);
 
-      });
-
-      sortedPosts.forEach((post) => {
-        const validUrl = typeof post.url === "string" && post.url.trim() !== "";
-
-        const item = document.createElement("li");
-        item.className = "all-post-item";
-
-        const main = document.createElement("div");
-        main.className = "all-post-main";
-
-        const itemLink = document.createElement("a");
-        itemLink.className = "all-post-title";
-        itemLink.href = validUrl ? post.url : "#";
-        itemLink.textContent = post.title || "未命名文章";
-        if (!validUrl) {
-          itemLink.textContent = `${itemLink.textContent}（連結待補）`;
-        }
-
-        const sub = document.createElement("p");
-        sub.className = "all-post-sub";
-        sub.textContent = post.excerpt || "尚無摘要";
-
-        const side = document.createElement("div");
-        side.className = "all-post-side";
-
-        const date = document.createElement("span");
-        date.className = "all-post-date";
-        date.textContent = post.date || "未設定日期";
-
-        const tag = document.createElement("span");
-        tag.className = "all-post-tag";
-        tag.textContent = post.category || "未分類";
-
-        main.appendChild(itemLink);
-        main.appendChild(sub);
-        side.appendChild(date);
-        side.appendChild(tag);
-        item.appendChild(main);
-        item.appendChild(side);
-        listContainer.appendChild(item);
       });
     }
 

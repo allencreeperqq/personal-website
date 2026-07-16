@@ -2,7 +2,7 @@
 title: 歡迎來到我的BLOG on GITHUB pages
 date: 2026-03-23
 category: 生活
-excerpt: 哈哈屁眼 歡迎來到我的BLOG
+excerpt: 哈哈大家好! 歡迎來到我的BLOG
 ---
 
 # 第一篇文章

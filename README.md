@@ -17,6 +17,13 @@ https://allencreeperqq.github.io/personal-website/
 
 ## 版本歷程
 
+### 2026-07-16
+
+- 調整 `index.html`：`全部貼文列表` 新增分類下拉選單，可先選擇要預覽的文章分類。
+- 調整 `index.html`：`全部貼文列表` 改為分頁顯示，每頁最多 8 篇文章，超過後可切換到下一頁，不會讓單一頁面超過 8 篇。
+- 調整 `index.html`：分頁與分類篩選會同步重算目前列表，避免切換分類後仍停留在超出範圍的頁碼。
+- 調整 `index.html`：歡迎視窗文字補上 Cloudflare 正常運作說明，並確認首頁與文章頁維持純前端、相對路徑 fetch 與 `.nojekyll` 的靜態部署相容方式，可正常部署到 Cloudflare Pages。
+
 ### 2026-05-10
 
 - 調整 `blog/post.html`：新增 Markdown fenced code block（```）語法支援，文章內三反引號包覆的程式碼可正確以區塊樣式顯示。
