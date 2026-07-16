@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../assets/engagement.css" />
   <title>Blog 文章</title>
   <style>
     :root {
@@ -260,6 +261,13 @@
     <h1 id="post-title" class="post-title">載入中...</h1>
     <div id="post-meta" class="post-meta"></div>
     <article id="post-body" class="post-body"></article>
+    <section
+      id="post-engagement"
+      class="cf-engagement"
+      data-page-key=""
+      data-page-title=""
+      data-turnstile-site-key=""
+    ></section>
     <p id="error-text" class="error" hidden></p>
   </main>
 
@@ -278,6 +286,7 @@
     };
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script src="../assets/engagement.js" defer></script>
 
   <script>
     function escapeHtml(input) {
@@ -654,6 +663,7 @@
       const metaEl = document.getElementById("post-meta");
       const bodyEl = document.getElementById("post-body");
       const errorEl = document.getElementById("error-text");
+      const engagementEl = document.getElementById("post-engagement");
 
       if (window.location.protocol === "file:") {
         errorEl.hidden = false;
@@ -683,6 +693,14 @@
         titleEl.textContent = meta.title || safeFile;
         metaEl.textContent = `${meta.date || "未設定日期"} | ${meta.category || "未分類"}`;
         bodyEl.innerHTML = markdownToHtml(body, safeFile);
+
+        if (engagementEl) {
+          // 文章頁的互動資料以實際文章檔名作為 page key，方便 D1 分開統計每篇文章。
+          engagementEl.dataset.pageKey = `post:${postPath}`;
+          engagementEl.dataset.pageTitle = titleEl.textContent || safeFile;
+          engagementEl.dataset.turnstileSiteKey = "";
+          window.CloudflareEngagement?.boot?.();
+        }
 
         if (window.MathJax?.typesetClear) {
           window.MathJax.typesetClear([bodyEl]);

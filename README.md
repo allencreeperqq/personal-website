@@ -1,5 +1,36 @@
 # personal-website
 https://allencreeperqq.github.io/personal-website/
+
+## Cloudflare 全端版本
+
+這個版本把首頁與文章頁直接接到 Cloudflare Pages Functions，留言、按讚與瀏覽統計都寫入 D1，並保留 KV 與 Turnstile 的擴充點。
+
+### 初始化指令
+
+1. 建立 D1 資料庫後，先套用 migration：
+
+```powershell
+wrangler d1 migrations apply personal_website
+```
+
+1. 建立 KV namespace 後，把 ID 填入 [wrangler.json](wrangler.json) 的 `COMMENT_CACHE`。
+1. 若要啟用留言防機器人，先在 Cloudflare 建立 Turnstile，再執行：
+
+```powershell
+wrangler secret put TURNSTILE_SECRET_KEY
+```
+
+1. 本機測試 Pages Functions：
+
+```powershell
+wrangler pages dev .
+```
+
+### 前端設定
+
+- [index.html](index.html) 與 [blog/post.html](blog/post.html) 內的 `data-turnstile-site-key` 目前先保留空字串；若要正式啟用 Turnstile，請把 site key 填進去。
+- 留言內容只以純文字儲存與顯示，前端以 `textContent` 呈現，避免 XSS。
+
 ## 常見問題
 
 ### 出現 "Failed to fetch"
@@ -18,6 +49,12 @@ https://allencreeperqq.github.io/personal-website/
 ## 版本歷程
 
 ### 2026-07-16
+
+- 新增 [wrangler.json](wrangler.json)：把 Cloudflare Pages、D1 與 KV 的 IaC 設定集中管理，方便直接用 Wrangler 部署。
+- 新增 [functions/api/engagement.js](functions/api/engagement.js)：提供匿名留言、按讚與瀏覽量統一 API，並在伺服器端完成 D1 SQL 綁定、留言長度限制與 Turnstile 驗證。
+- 新增 [assets/engagement.js](assets/engagement.js) 與 [assets/engagement.css](assets/engagement.css)：讓首頁與文章頁共用同一套互動面板，瀏覽量只會在同一個分頁內去重一次，留言與按讚則即時回寫 D1。
+- 新增 [migrations/0001_init.sql](migrations/0001_init.sql)：把 page stats 與留言資料表納入 migration，避免手動在後台建立表格。
+- 調整 [index.html](index.html) 與 [blog/post.html](blog/post.html)：接上 Cloudflare 互動面板，首頁與單篇文章都能顯示瀏覽、按讚與匿名留言。
 
 - 調整 `index.html`：`全部貼文列表` 新增分類下拉選單，可先選擇要預覽的文章分類。
 - 調整 `index.html`：`全部貼文列表` 改為分頁顯示，每頁最多 8 篇文章，超過後可切換到下一頁，不會讓單一頁面超過 8 篇。
