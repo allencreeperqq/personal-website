@@ -182,6 +182,20 @@ async function rateLimitComment(env, request, pageKey) {
   return { ok: true };
 }
 
+async function isDuplicateComment(env, pageKey, nickname, content) {
+  const recent = await env.DB.prepare(`
+    SELECT 1
+    FROM comments
+    WHERE page_key = ?
+      AND nickname = ?
+      AND content = ?
+      AND datetime(created_at) >= datetime('now', '-30 seconds')
+    LIMIT 1
+  `).bind(pageKey, nickname, content).first();
+
+  return Boolean(recent);
+}
+
 async function handleEngagement(request, env) {
   try {
     if (!env.DB) {
@@ -224,6 +238,10 @@ async function handleEngagement(request, env) {
 
       if (!content) {
         return jsonResponse({ ok: false, error: "留言內容不能為空。" }, 400);
+      }
+
+      if (await isDuplicateComment(env, pageKey, nickname, content)) {
+        return jsonResponse({ ok: false, error: "這則留言看起來已經送出過了，請稍後再試。" }, 409);
       }
 
       const throttle = await rateLimitComment(env, request, pageKey);

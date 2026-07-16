@@ -34,6 +34,13 @@
     return String(container.dataset.turnstileSiteKey || "").trim();
   }
 
+  function formatSyncTime(value) {
+    if (!value) return "尚未同步";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "尚未同步";
+    return `最後更新：${date.toLocaleString("zh-Hant-TW", { hour12: false })}`;
+  }
+
   function renderShell(container) {
     if (container.dataset.engagementReady === "1") return;
 
@@ -46,6 +53,10 @@
       '  <div class="cf-engagement__meter">',
       '    <span class="cf-pill">瀏覽 <strong data-role="views">0</strong></span>',
       '    <button type="button" class="cf-like-button" data-role="like-button">按讚 <strong data-role="likes">0</strong></button>',
+      '  </div>',
+      '  <div class="cf-engagement__status">',
+      '    <span class="cf-engagement__sync" data-role="updated-at">尚未同步</span>',
+      '    <button type="button" class="cf-refresh-button" data-role="refresh-button">重新整理</button>',
       '  </div>',
       '</div>',
       '<div class="cf-engagement__body">',
@@ -123,8 +134,10 @@
   function updateStats(container, stats) {
     const viewsNode = container.querySelector('[data-role="views"]');
     const likesNode = container.querySelector('[data-role="likes"]');
+    const updatedAtNode = container.querySelector('[data-role="updated-at"]');
     if (viewsNode) viewsNode.textContent = String(Number(stats?.views || 0));
     if (likesNode) likesNode.textContent = String(Number(stats?.likes || 0));
+    if (updatedAtNode) updatedAtNode.textContent = formatSyncTime(stats?.updatedAt || null);
   }
 
   function readSessionFlag(key) {
@@ -196,6 +209,23 @@
     const data = await requestJson(`${API_PATH}?key=${encodeURIComponent(pageKey)}`);
     updateStats(container, data.stats);
     renderComments(container, data.comments);
+  }
+
+  function bindRefreshButton(container) {
+    const button = container.querySelector('[data-role="refresh-button"]');
+    if (!button) return;
+
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        await refreshWidget(container);
+        setFeedback(container, "已重新同步最新留言與統計。", false);
+      } catch (error) {
+        setFeedback(container, error.message, true);
+      } finally {
+        button.disabled = false;
+      }
+    });
   }
 
   async function recordViewOnce(container) {
@@ -302,6 +332,7 @@
 
     initializedWidgets.add(container);
     renderShell(container);
+    bindRefreshButton(container);
 
     // 瀏覽統計先寫入，再重抓一次資料，讓頁面上的數字與 D1 保持一致。
     try {

@@ -1,5 +1,6 @@
 # personal-website
-https://allencreeperqq.github.io/personal-website/
+
+[https://allencreeperqq.github.io/personal-website/](https://allencreeperqq.github.io/personal-website/)
 
 ## Cloudflare 全端版本
 
@@ -65,6 +66,10 @@ wrangler pages dev .
 - 調整 [worker.js](worker.js)：在留言 API 外層加上 `try/catch` 與明確錯誤回應，讓前端可以看到實際失敗原因而不是只剩 HTTP500。
 - 調整 [worker.js](worker.js)：在沒有 D1 綁定時回傳 503，讓靜態站與 API 的降級行為更清楚。
 - 調整 [README.md](README.md)：補上 `wrangler d1 migrations apply`、`wrangler pages dev .`、Turnstile 設定與 D1 / KV 的操作流程，讓 IaC 部署步驟可以直接照文件執行。
+- 調整 [assets/engagement.js](assets/engagement.js)：新增「重新整理」按鈕與最後同步時間，讓使用者能主動拉取最新留言與統計。
+- 調整 [worker.js](worker.js)：新增 30 秒內相同留言去重，避免重複送出或網路重試造成雙寫。
+- 調整 [assets/engagement.css](assets/engagement.css)：補上同步狀態與重新整理按鈕的樣式，讓互動區的資訊層級更清楚。
+- 調整 [README.md](README.md)：把這次留言防重送、同步狀態與互動區可見性提升的細節一併記錄。
 
 - 調整 `index.html`：`全部貼文列表` 新增分類下拉選單，可先選擇要預覽的文章分類。
 - 調整 `index.html`：`全部貼文列表` 改為分頁顯示，每頁最多 8 篇文章，超過後可切換到下一頁，不會讓單一頁面超過 8 篇。
