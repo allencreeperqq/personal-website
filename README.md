@@ -57,6 +57,14 @@ wrangler pages dev .
 - 新增 [assets/engagement.js](assets/engagement.js) 與 [assets/engagement.css](assets/engagement.css)：讓首頁與文章頁共用同一套互動面板，瀏覽量只會在同一個分頁內去重一次，留言與按讚則即時回寫 D1。
 - 新增 [migrations/0001_init.sql](migrations/0001_init.sql)：把 page stats 與留言資料表納入 migration，避免手動在後台建立表格。
 - 調整 [index.html](index.html) 與 [blog/post.html](blog/post.html)：接上 Cloudflare 互動面板，首頁與單篇文章都能顯示瀏覽、按讚與匿名留言。
+- 新增 [worker.js](worker.js)：補上 Worker entrypoint，讓 `wrangler deploy` / `wrangler versions upload` 能直接讀取靜態資產並轉發到 `/api/engagement`。
+- 調整 [wrangler.json](wrangler.json)：先移除無效的 KV namespace placeholder，避免 Cloudflare 在部署階段因假 ID 阻擋上傳。
+- 調整 [wrangler.json](wrangler.json)：補回正式 D1 `database_id`，讓留言與統計功能真的連到 Cloudflare D1。
+- 修正 [wrangler.json](wrangler.json)：補齊 JSON 結構與逗號，修掉 `CommaExpected` 的部署前解析錯誤。
+- 調整 [worker.js](worker.js)：把 D1 schema 建立改成逐條 `prepare(...).run()`，避免單次 schema 初始化失敗就讓留言 API 整段炸掉。
+- 調整 [worker.js](worker.js)：在留言 API 外層加上 `try/catch` 與明確錯誤回應，讓前端可以看到實際失敗原因而不是只剩 HTTP500。
+- 調整 [worker.js](worker.js)：在沒有 D1 綁定時回傳 503，讓靜態站與 API 的降級行為更清楚。
+- 調整 [README.md](README.md)：補上 `wrangler d1 migrations apply`、`wrangler pages dev .`、Turnstile 設定與 D1 / KV 的操作流程，讓 IaC 部署步驟可以直接照文件執行。
 
 - 調整 `index.html`：`全部貼文列表` 新增分類下拉選單，可先選擇要預覽的文章分類。
 - 調整 `index.html`：`全部貼文列表` 改為分頁顯示，每頁最多 8 篇文章，超過後可切換到下一頁，不會讓單一頁面超過 8 篇。
