@@ -66,7 +66,7 @@
       '    </label>',
       '    <label class="cf-field">',
       '      <span>留言內容</span>',
-      '      <textarea name="content" maxlength="500" rows="5" placeholder="留下你的想法，支援換行。" required></textarea>',
+      '      <textarea name="content" maxlength="500" rows="2" placeholder="留下你的想法，支援換行。" required></textarea>',
       '    </label>',
       '    <div class="cf-turnstile-slot" data-role="turnstile"></div>',
       '    <button type="submit" class="cf-submit-button">送出留言</button>',

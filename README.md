@@ -133,3 +133,50 @@ wrangler pages dev .
 - 新增 `content/recent-doing.txt` 與 `content/self-intro.txt`：將「最近在做甚麼」與「自我介紹」改為可由 txt 外部維護。
 - 調整 `index.html`：首頁載入時自動讀取上述 txt，修改文字不需再改 HTML。
 - 調整 `blog/posts/`：修正文章檔名與 `index.json` 不一致問題（`2026-03-23-homemade NAS.md`），使新貼文可正常顯示於首頁清單。
+
+### 2026-07-16（追加）
+
+- 修正 [index.html](index.html)：`.page-layout` 原本 `margin: 0`，在寬螢幕（超過 1280px）下內容會整塊貼齊左側，無法置中。改為 `margin: 0 auto` 後，主要內容會依視窗寬度置中顯示，不同裝置螢幕大小切換時體驗更一致。（`blog/post.html` 的 `.post-wrap` 原本就已是 `margin: 0 auto`，本次未調整。）
+- 調整 [assets/engagement.css](assets/engagement.css)：留言互動區 `.cf-engagement__body` 原本是「表單在左、留言列表在右」的雙欄扁平版面（`minmax(280px, 360px) minmax(0, 1fr)`），改為單欄堆疊（表單在上、留言列表在下），並限制寬度為 `min(640px, 100%)` 置中顯示，讓整體區塊改為向 y 軸延伸的長版面，不再是左右扁胖的排列。
+- 調整 [assets/engagement.css](assets/engagement.css)：`.cf-comments__list` 新增 `min-height: 200px`、`max-height: 640px` 與 `overflow-y: auto`，留言列表本身也會隨內容向下延伸並在超過高度上限時可捲動，強化「向下延伸較長」的視覺效果。
+- 調整 [assets/engagement.css](assets/engagement.css)：移除原本在 `max-width: 820px` 媒體查詢中把雙欄改單欄的規則（`grid-template-columns: 1fr`），因為版面已預設為單欄，該規則已無作用，僅保留該媒體查詢下的按鈕/狀態列對齊調整。
+- 說明：本次為純 CSS 版面調整，未變更留言、按讚、瀏覽量相關的 API 邏輯（[assets/engagement.js](assets/engagement.js)、[functions/api/engagement.js](functions/api/engagement.js)）。因本機環境沒有可用的瀏覽器截圖工具，已用 `py -m http.server 5500` 啟動本機伺服器確認頁面可正常載入（HTTP 200），但未能實際用瀏覽器肉眼核對置中與留言區版面在各種螢幕寬度下的呈現，建議部署後在實機/瀏覽器開發者工具的裝置模擬器下再次確認。
+
+### 2026-07-16（第二次追加：留言區改為橫向延伸、左側大格補上互動小工具）
+
+- 調整 [assets/engagement.css](assets/engagement.css)：依需求把留言區從「單欄向下延伸」改回「向 x 軸延伸」的版面。`.cf-engagement__body` 改回雙欄（左窄欄放留言表單、右側寬欄放留言列表），並移除先前限制寬度 `min(640px, 100%)` 置中的設定，改用 `width: 100%` 撐滿卡片可用寬度。
+- 調整 [assets/engagement.css](assets/engagement.css)：`.cf-comments__list` 從原本的「垂直清單 + 向下捲動（`overflow-y: auto`）」改為「水平排列 + 向右捲動（`display: flex; overflow-x: auto;`）」，並加上 `scroll-snap-type: x proximity` 讓橫向捲動時會自然停在每一則留言卡片上；同時補上符合暗色主題的自訂捲軸樣式（`::-webkit-scrollbar` 系列 + `scrollbar-color`）。
+- 調整 [assets/engagement.css](assets/engagement.css)：`.cf-comment` / `.cf-empty` 改為固定寬度（`width: min(280px, 78vw)`）、`flex: 0 0 auto` 的橫向卡片，並讓每張卡片可以 `scroll-snap-align: start` 對齊；`.cf-comment__content` 加上 `max-height: 220px; overflow-y: auto;`，避免單則過長留言把卡片撐得過高、破壞橫向排版的一致性。
+- 調整 [assets/engagement.css](assets/engagement.css)：`max-width: 820px` 的媒體查詢中補回 `.cf-engagement__body { grid-template-columns: 1fr; }`，讓手機等窄螢幕下留言表單與留言列表改回上下堆疊，橫向捲動的留言卡片機制在窄螢幕仍保留、體驗更自然。
+- 調整 [index.html](index.html)：`.intro-card`（左側「最近在做甚麼」大格）改為 `display: flex; flex-direction: column;`，讓卡片內容可以用 flex 版面控制留白分佈，為新增小工具鋪路。
+- 新增 [index.html](index.html)：在左側大格的社群連結區塊（`.social-box`）與「回到主選單」按鈕之間，新增 `.fun-box`「今日抽籤」小工具（`flex: 1` 吃掉卡片下方原本空曠的留白，並讓文字垂直置中），內容是點擊「再抽一次」按鈕後，隨機顯示一句與吉他、K-ON!、貓咪、義大利文學習、vibe coding 等個人興趣相關的趣味語錄/運勢小語，並用 `localStorage` 記住「已抽次數」，讓左側大格不再只是空白區域，同時也讓網站多一點互動性與個人特色。
+- 說明：本次同樣是純前端 CSS／少量 JS 調整，`.fun-box` 抽籤功能完全在瀏覽器端運作（陣列隨機挑選 + `localStorage` 計數），不會呼叫 `/api/engagement`，也不影響既有留言、按讚、瀏覽量的 D1 資料流程。已用 `py -m http.server 5500` 確認 `index.html` 可正常回應（HTTP 200）且新按鈕 `#fun-quote-roll` 有正確輸出在 HTML 中，但同樣受限於本機沒有瀏覽器截圖工具，未能實際在瀏覽器中點擊測試抽籤動畫與留言區橫向捲動的視覺效果，建議之後實機確認。
+
+### 2026-07-16（第三次追加：留言互動區改為橫跨整個版面）
+
+- 調整 [index.html](index.html)：原本「留言互動區」是 `content-card` 內 `content-grid` 底下的一個 `.content-block.full-width`，所以最多只會撐滿 `content-card` 自己那一欄（`page-layout` 兩欄式版面裡的右欄），左側「最近在做甚麼」大格的寬度並沒有被留言區用到。這次把留言區從 `content-grid` 裡抽出來，改成 `page-layout`（`<main>`）底下的第三個獨立區塊 `<section class="content-card engagement-card">`，直接橫跨左右兩欄。
+- 調整 [index.html](index.html)：新增 `.engagement-card { grid-column: 1 / -1; min-height: 0; }`，讓這個新區塊在 `page-layout` 的 grid 版面中強制跨滿所有欄（目前是左右兩欄），呈現在「最近在做甚麼」與「作品與 Blog」兩個大格下方、橫跨整個版面寬度的獨立留言互動區；在 `max-width: 980px` 的版面（`page-layout` 變成單欄）下，`grid-column: 1 / -1` 仍然成立，效果等同於原本的滿版寬度，不會有額外相容性問題。
+- 說明：留言互動區的 API 串接（`data-page-key="page:index"` 等）與版面內部樣式（雙欄表單/留言列表、留言卡片橫向捲動）完全沒有變動，這次純粹是調整它在整個頁面 grid 版面中的擺放位置與跨欄範圍。已用 `py -m http.server 5500` 確認 `index.html` 可正常回應（HTTP 200）且 `.engagement-card` 有正確輸出在 HTML 中，但受限於本機沒有瀏覽器截圖工具，未能實際在瀏覽器中核對橫跨版面後的視覺呈現，建議之後實機/不同螢幕寬度下再次確認。
+
+### 2026-07-16（第四次追加：留言互動區改為扁平、降低整體高度）
+
+- 調整 [index.html](index.html)：`.engagement-card` 補上較小的 `padding: 16px 22px`（原本沿用 `.content-card` 的 `padding: 28px`），並把區塊標題字級縮小為 `1.15rem`，讓橫跨版面的留言互動區不再佔用過多的上下留白。
+- 調整 [assets/engagement.css](assets/engagement.css)：`.cf-engagement` 的外距與內距從 `margin-top: 18px; padding: 18px; gap: 14px;` 收斂為 `margin-top: 12px; padding: 14px; gap: 10px;`；`.cf-engagement__form` 與 `.cf-comments` 的內距從 `14px` 收斂為 `10px`，整體卡片高度變得更緊湊、更扁平。
+- 調整 [assets/engagement.css](assets/engagement.css)：`.cf-field textarea` 從 `min-height: 110px` 改為明確的 `height: 60px; min-height: 44px;`，讓留言輸入框不再是預設偏高的大方塊，同時搭配 [assets/engagement.js](assets/engagement.js) 把 `<textarea>` 的 `rows` 從 `5` 降為 `2`，避免瀏覽器依 `rows` 撐出比 CSS 設定還高的輸入框。
+- 調整 [assets/engagement.css](assets/engagement.css)：留言卡片 `.cf-comment` / `.cf-empty` 寬度從 `min(280px, 78vw)` 收斂為 `min(240px, 74vw)`、內距從 `12px` 降為 `10px`；卡片內文字 `.cf-comment__content` 的 `max-height` 從 `220px` 大幅降到 `110px`（同時字級微調為 `0.92rem`），讓每張橫向留言卡片變矮，不再像原本一樣是又高又占版面的一大塊。
+- 說明：本次是純粹的高度／間距收斂調整，沒有更動留言互動區既有的橫跨版面位置、雙欄表單＋橫向捲動留言列表的版面邏輯，也沒有更動 API 邏輯。已用 `py -m http.server 5500` 確認 `index.html` 仍可正常回應（HTTP 200），但同樣受限於本機沒有瀏覽器截圖工具，未能實際核對扁平化後的視覺高度是否符合預期，建議之後實機瀏覽確認。
+
+### 2026-07-16（第五次追加：移除「今日抽籤」下方的回到主選單按鈕，保留留白）
+
+- 調整 [index.html](index.html)：移除 `.fun-box`（今日抽籤）下方原本的 `<div class="actions"><a class="back-link" href="index.html">回到主選單</a></div>`。這顆按鈕的連結原本就是指回 `index.html` 自己（首頁連回首頁），已無實際作用；移除後 `.fun-box` 仍維持 `flex: 1` 撐滿左側大格下方空間，按鈕原本佔用的位置直接變成留白，不再另外放東西。
+- 調整 [index.html](index.html)：一併移除因此變成沒有任何元素使用的 `.actions`、`.back-link`、`.back-link:hover` 三個 CSS 規則，以及 `max-width: 560px` 手機版媒體查詢裡專屬於 `.back-link` 的寬度調整規則，避免留下用不到的死樣式。
+- 說明：純刪除操作，未新增任何元素或邏輯。已用 `py -m http.server 5500` 確認 `index.html` 仍可正常回應（HTTP 200），且輸出的 HTML 中已完全找不到 `back-link` / 「回到主選單」字樣，確認移除乾淨；同樣受限於本機沒有瀏覽器截圖工具，未能實際檢視移除後左側大格留白的視覺比例，建議之後實機瀏覽確認。
+
+### 2026-07-16（第六次追加：把 kanatachan 吉祥物做進「今日抽籤」小工具）
+
+- 參考本機另一份專案 `D:\coding\cpp_2026 CYEE\0309\sort_report\index.html` 右下角的浮動吉祥物元件（`.mascot-widget` / `.mascot-bubble` / `.mascot-image`，點擊或按 Enter/空白鍵會切換歡迎訊息），把同一套「吉祥物 + 對話泡泡」互動模式移植進本專案 [index.html](index.html) 的「今日抽籤」小工具（`.fun-box`）裡。
+- 新增 [assets/kanatasochan.png](assets/kanatasochan.png)：從上述參考專案複製過來的 kanatachan 吉祥物圖片（該專案原始檔為 `kanatasochan_6.png`），兩份專案皆為潘宇綸本人的個人作品，圖片由本人重複使用於自己的專案之間。
+- 調整 [index.html](index.html)：新增 `@keyframes mascotFloat`（吉祥物上下漂浮動畫），並新增 `.fun-mascot`、`.fun-mascot-image` 兩個 CSS 類別；把原本單純的 `.fun-quote` 文字段落，改造成吉祥物頭上的「對話泡泡」樣式（邊框、底色、陰影），吉祥物圖片本身則套用漂浮動畫與 `drop-shadow`。
+- 調整 [index.html](index.html)：`.fun-box` 內部原本只有一段文字，現在改為「對話泡泡文字＋kanatachan 圖片」的 `.fun-mascot` 區塊（`role="button" tabindex="0"`，可滑鼠點擊也可用 Tab 鍵移到吉祥物身上後按 Enter / 空白鍵觸發），下方仍保留原本的「再抽一次」按鈕，兩種操作方式共用同一組抽籤邏輯。
+- 調整 [index.html](index.html)：JS 端把原本寫在按鈕點擊事件裡的抽籤邏輯抽成獨立的 `rollQuote()` 函式，並加上 `rolling` 旗標避免連續快速點擊時動畫互相打斷；`rollQuote()` 同時綁定到「再抽一次」按鈕與吉祥物本身（`click` 與 `keydown`），點吉祥物或按按鈕效果一致，都會更新對話泡泡文字、已抽次數與 `localStorage` 計數。
+- 說明：吉祥物互動同樣完全在瀏覽器端運作，不會呼叫任何後端 API。已用 `py -m http.server 5500` 確認 `index.html`（HTTP 200）與新圖片 `assets/kanatasochan.png`（HTTP 200）都能正常載入，且 `.fun-mascot` 相關元素有正確輸出在 HTML 中；受限於本機沒有瀏覽器截圖工具，未能實際點擊測試漂浮動畫與對話泡泡切換效果，建議之後實機瀏覽確認。

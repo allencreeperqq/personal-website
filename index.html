@@ -37,6 +37,16 @@
       }
     }
 
+    @keyframes mascotFloat {
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-6px);
+      }
+    }
+
     body {
       margin: 0;
       min-height: 100vh;
@@ -53,7 +63,7 @@
 
     .page-layout {
       width: min(1280px, 100%);
-      margin: 0;
+      margin: 0 auto;
       display: grid;
       grid-template-columns: minmax(300px, 1fr) minmax(0, 2fr);
       gap: 22px;
@@ -71,6 +81,8 @@
       box-shadow: 0 24px 45px rgba(0, 0, 0, 0.35);
       padding: 28px;
       height: 100%;
+      display: flex;
+      flex-direction: column;
     }
 
     .content-card {
@@ -83,6 +95,16 @@
       box-shadow: 0 24px 45px rgba(0, 0, 0, 0.35);
       padding: 28px;
       min-height: 100%;
+    }
+
+    .engagement-card {
+      grid-column: 1 / -1;
+      min-height: 0;
+      padding: 16px 22px;
+    }
+
+    .engagement-card .content-title {
+      font-size: 1.15rem;
     }
 
     .student-header {
@@ -236,29 +258,102 @@
       font-size: 0.92rem;
     }
 
-    .actions {
-      margin-top: 20px;
+    .fun-box {
+      margin-top: 14px;
+      flex: 1;
+      min-height: 140px;
       display: flex;
-      justify-content: flex-start;
-    }
-
-    .back-link {
-      display: inline-block;
-      min-width: 220px;
-      padding: 12px 16px;
+      flex-direction: column;
+      justify-content: center;
+      gap: 10px;
+      border: 1px solid rgba(56, 189, 248, 0.32);
       border-radius: 10px;
-      text-decoration: none;
+      background:
+        radial-gradient(circle at 18% 20%, rgba(56, 189, 248, 0.1), transparent 46%),
+        radial-gradient(circle at 82% 78%, rgba(129, 140, 248, 0.12), transparent 46%),
+        linear-gradient(150deg, rgba(15, 23, 42, 0.7), rgba(30, 27, 75, 0.5));
+      padding: 16px;
       text-align: center;
-      color: #f8fafc;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      border: 1px solid rgba(125, 211, 252, 0.6);
-      font-weight: 600;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-    .back-link:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 22px rgba(14, 165, 233, 0.35);
+    .fun-box-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #dbeafe;
+      font-size: 0.98rem;
+      font-weight: 600;
+    }
+
+    .fun-box-count {
+      color: #7dd3fc;
+      font-size: 0.78rem;
+      font-weight: 400;
+    }
+
+    .fun-mascot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .fun-mascot:focus-visible {
+      outline: 2px solid rgba(125, 211, 252, 0.95);
+      outline-offset: 4px;
+      border-radius: 12px;
+    }
+
+    .fun-quote {
+      margin: 0;
+      min-height: 2.6em;
+      max-width: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.6);
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.24);
+      color: #e2e8f0;
+      font-size: 0.94rem;
+      line-height: 1.55;
+      transition: opacity 0.2s ease;
+    }
+
+    .fun-quote.is-rolling {
+      opacity: 0.15;
+    }
+
+    .fun-mascot-image {
+      width: clamp(72px, 16vw, 110px);
+      height: auto;
+      filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.35));
+      animation: mascotFloat 3s ease-in-out infinite;
+      transform-origin: center bottom;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .fun-roll-button {
+      justify-self: center;
+      border: 1px solid rgba(125, 211, 252, 0.5);
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(129, 140, 248, 0.22));
+      color: #f0f9ff;
+      font: inherit;
+      font-weight: 600;
+      padding: 8px 18px;
+      cursor: pointer;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .fun-roll-button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(125, 211, 252, 0.85);
     }
 
     .content-title {
@@ -612,11 +707,6 @@
         padding: 22px 16px;
       }
 
-      .back-link {
-        width: 100%;
-        min-width: 0;
-      }
-
       .all-post-item {
         grid-template-columns: 1fr;
       }
@@ -724,9 +814,17 @@
         </div>
       </section>
 
-      <div class="actions">
-        <a class="back-link" href="index.html">回到主選單</a>
-      </div>
+      <section class="fun-box">
+        <div class="fun-box-header">
+          <span>🎸 今日抽籤</span>
+          <span class="fun-box-count" id="fun-quote-count">已抽 0 次</span>
+        </div>
+        <div class="fun-mascot" id="fun-mascot" role="button" tabindex="0" aria-label="點吉祥物抽一句今天的語錄">
+          <p class="fun-quote" id="fun-quote-text">按下面的吉祥物或按鈕，抽一句今天的運勢或語錄！</p>
+          <img class="fun-mascot-image" src="assets/kanatasochan.png" alt="kanatachan 吉祥物" />
+        </div>
+        <button class="fun-roll-button" type="button" id="fun-quote-roll">再抽一次 🎲</button>
+      </section>
     </section>
 
     <section class="content-card">
@@ -765,17 +863,17 @@
           <ul id="all-post-list" class="all-post-list"></ul>
         </article>
 
-        <article class="content-block full-width">
-          <h3>留言互動區</h3>
-          <div
-            class="cf-engagement cf-engagement--embedded"
-            data-page-key="page:index"
-            data-page-title="首頁"
-            data-turnstile-site-key=""
-          ></div>
-        </article>
-
       </div>
+    </section>
+
+    <section class="content-card engagement-card">
+      <h2 class="content-title">留言互動區</h2>
+      <div
+        class="cf-engagement cf-engagement--embedded"
+        data-page-key="page:index"
+        data-page-title="首頁"
+        data-turnstile-site-key=""
+      ></div>
     </section>
   </main>
 
@@ -863,6 +961,80 @@
       }
     }
 
+    const FUN_QUOTES = [
+      "今天適合把 Blues 的 licks 練熟一點 🎸",
+      "遇到瓶頸的時候，先去嚕貓再說 🐱",
+      "「はい、たのしいですね」— 今天也要開心過 K-ON! 式的一天",
+      "義大利文小教室：Buongiorno = 早安，記得跟朋友打招呼",
+      "效果器又燒焦一顆電阻？別擔心，這是進步的味道 🔥",
+      "今天運勢：適合 Debug，也適合裝新的 Distortion 電路",
+      "AMANE KANATA 今天也在守護大家的笑容 💫",
+      "電機系的你，今天也辛苦了，記得喝水",
+      "隨手彈一段riff，說不定就是新歌的靈感",
+      "貓咪嚕到的機率：今天 87%，加油！",
+      "程式碼跟吉他一樣，多練幾遍手感就出來了",
+      "深呼吸，休息一下，vibe coding 也需要 vibe"
+    ];
+
+    function updateFunQuoteCount(count) {
+      const countEl = document.getElementById("fun-quote-count");
+      if (countEl) countEl.textContent = `已抽 ${count} 次`;
+    }
+
+    function initFunQuoteBox() {
+      const textEl = document.getElementById("fun-quote-text");
+      const rollBtn = document.getElementById("fun-quote-roll");
+      const mascot = document.getElementById("fun-mascot");
+      if (!textEl || !rollBtn) return;
+
+      let count = 0;
+      try {
+        count = Number(localStorage.getItem("fun-quote-count") || "0") || 0;
+      } catch {
+        count = 0;
+      }
+      updateFunQuoteCount(count);
+
+      let lastIndex = -1;
+      let rolling = false;
+
+      function rollQuote() {
+        if (rolling) return;
+        rolling = true;
+        textEl.classList.add("is-rolling");
+        window.setTimeout(() => {
+          let index = Math.floor(Math.random() * FUN_QUOTES.length);
+          if (FUN_QUOTES.length > 1 && index === lastIndex) {
+            index = (index + 1) % FUN_QUOTES.length;
+          }
+          lastIndex = index;
+          textEl.textContent = FUN_QUOTES[index];
+          textEl.classList.remove("is-rolling");
+          rolling = false;
+
+          count += 1;
+          updateFunQuoteCount(count);
+          try {
+            localStorage.setItem("fun-quote-count", String(count));
+          } catch {
+            // localStorage 不可用時，僅本次瀏覽的次數不會被記住。
+          }
+        }, 180);
+      }
+
+      rollBtn.addEventListener("click", rollQuote);
+
+      if (mascot) {
+        mascot.addEventListener("click", rollQuote);
+        mascot.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            rollQuote();
+          }
+        });
+      }
+    }
+
     window.addEventListener("DOMContentLoaded", () => {
       const modal = document.getElementById("welcomeModal");
       const closeBtn = document.getElementById("closeWelcomeModal");
@@ -873,6 +1045,7 @@
       }
 
       loadEditableTextSections();
+      initFunQuoteBox();
     });
 
     function parseFrontMatter(text) {
