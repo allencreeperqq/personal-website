@@ -1,5 +1,6 @@
 # personal-website
-https://allencreeperqq.github.io/personal-website/
+https://personal-website.allencreeperqq.workers.dev/
+##提示: 目前github pages為保護個人檔案安全 已經關閉 請移駕cloudflare
 ## 常見問題
 
 ### 出現 "Failed to fetch"
