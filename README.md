@@ -20,16 +20,16 @@ wrangler d1 migrations apply personal_website
 1. 若要啟用留言防機器人，先在 Cloudflare 建立 Turnstile，再執行：
 
 ```powershell
-wrangler secret put TURNSTILE_SECRET_KEY
+wrangler pages secret put TURNSTILE_SECRET_KEY
 ```
 
 1. 本機測試：
 
 ```powershell
-wrangler dev
+wrangler pages dev .
 ```
 
-> **這是 Cloudflare Workers（含靜態資產）專案，不是 Pages 專案**，`wrangler.json` 用 `"main": "worker.js"` + `"assets"` 綁定（不是 `pages_build_output_dir`），所以指令一律用不帶 `pages` 的版本：`wrangler secret put`、`wrangler deploy`、`wrangler dev`。曾經誤把 `pages_build_output_dir` 也一起寫進 `wrangler.json`，導致 wrangler 4.x 直接報錯「Configuration file cannot contain both "main" and "pages_build_output_dir"」，已經拿掉，詳見下方版本歷程。
+> **這是 Cloudflare Pages 專案**（Cloudflare 帳號上已經是用 Pages 建立的，這是 wrangler CLI 實際查詢後確認的，不是本機檔案說了算），所以指令一律用帶 `pages` 的版本：`wrangler pages secret put`、`wrangler pages deploy .`、`wrangler pages dev .`。`wrangler.json` 用 `"pages_build_output_dir": "."`；路由邏輯放在專案根目錄的 [_worker.js](_worker.js)（Pages 的 Advanced Mode 檔名慣例，Cloudflare 看到這個檔名就會用它接管所有路由，並自動提供 `env.ASSETS` 讀取靜態檔案，不需要在 `wrangler.json` 額外宣告 `main` 或 `assets`）。這個檔案原本叫 `worker.js`，中途走了一段彎路（先誤判成純 Workers 專案、把 `pages_build_output_dir` 拿掉），後來依照 wrangler 實際回報的錯誤重新確認過根因，才改回現在這個設定，詳見下方版本歷程。
 
 ### 前端設定
 
@@ -71,8 +71,15 @@ wrangler dev
 3. **設定兩個 secret（帳號、密碼都是明文，你自己決定內容）**
 
    ```powershell
-   wrangler secret put ADMIN_USERNAME
-   wrangler secret put ADMIN_PASSWORD
+   wrangler pages secret put ADMIN_USERNAME
+   wrangler pages secret put ADMIN_PASSWORD
+   ```
+
+   如果指令跳出來要你選 / 指定專案，代表要加上 `--project-name`（專案名稱就是 `personal-website`，跟 `wrangler.json` 裡的 `name` 一致）：
+
+   ```powershell
+   wrangler pages secret put ADMIN_USERNAME --project-name personal-website
+   wrangler pages secret put ADMIN_PASSWORD --project-name personal-website
    ```
 
    為什麼：Cloudflare secret 是加密保存、不會出現在 `wrangler.json` 或 git repo 裡的敏感資料存放方式；帳號密碼一樣不會進 git，但這裡是直接存明文比對，不做雜湊，設定起來最簡單，代價是安全性比雜湊版本低（見下方安全性摘要）。
@@ -80,7 +87,7 @@ wrangler dev
 4. **重新部署**
 
    ```powershell
-   wrangler deploy
+   wrangler pages deploy .
    ```
 
    為什麼：新的 R2 綁定與兩個 secret 都要部署後才會生效。
@@ -97,9 +104,9 @@ wrangler dev
 
 ### 已知限制 / 之後可以做的事
 
-- `wrangler.json` 裡 `"main": "worker.js"` 搭配 `pages_build_output_dir` 是 Cloudflare Pages 的 Advanced Mode，`worker.js` 會接管所有路由；這代表 `functions/api/engagement.js` 目前在正式環境其實不會被執行（是舊留下來的重複邏輯），這次沒有動它，之後有空可以考慮刪掉避免混淆。
+- 專案根目錄的 [_worker.js](_worker.js) 是 Cloudflare Pages 的 Advanced Mode 入口檔案，會接管所有路由；這代表 `functions/api/engagement.js` 目前在正式環境其實不會被執行（是舊留下來的重複邏輯），這次沒有動它，之後有空可以考慮刪掉避免混淆。
 - 目前只做了「單一 admin 帳號」，沒有多使用者資料表；如果之後想開放多人共同管理，需要另外設計。
-- 本機的自動化測試是用假的 D1/R2/KV 模擬物件跑的（見下方版本歷程），還沒有連到你真實的 Cloudflare 資源；上面 4 個步驟做完後，還是建議用 `wrangler dev`（wrangler 支援本機模擬 D1/R2）跑一次登入 → 發文 → 上傳圖片/PDF → 留言管理的完整流程，確認跟真實 D1/R2 接起來也正常。
+- 本機的自動化測試是用假的 D1/R2/KV 模擬物件跑的（見下方版本歷程），還沒有連到你真實的 Cloudflare 資源；上面 4 個步驟做完後，還是建議用 `wrangler pages dev .`（wrangler 支援本機模擬 D1/R2）跑一次登入 → 發文 → 上傳圖片/PDF → 留言管理的完整流程，確認跟真實 D1/R2 接起來也正常。
 
 ## 常見問題
 
@@ -330,3 +337,24 @@ Configuration file for Pages projects does not support "assets"
 - 調整 [wrangler.json](wrangler.json)：移除 `"pages_build_output_dir": "."`，只保留 `"main"` + `"assets"` 的 Workers 靜態資產寫法，設定檔不再自相矛盾。
 - 調整 [README.md](README.md)：把上一輪誤改成 `wrangler pages secret put` / `wrangler pages deploy .` / `wrangler pages dev .` 的地方全部改回不帶 `pages` 的原版指令（`wrangler secret put`、`wrangler deploy`、`wrangler dev`），並在「初始化指令」段落加註說明這是 Workers 專案、以及這次設定衝突的來龍去脈，避免以後又被同樣的錯誤訊息誤導。歷史版本歷程裡舊的 `wrangler pages dev .` 記錄予以保留（如實反映當時的操作紀錄），不回頭竄改。
 - 說明：這次沒有辦法讓我自己重現 wrangler CLI 的驗證錯誤（本機沒有登入 Cloudflare 帳號、也沒有安裝 wrangler），完全是根據使用者貼的錯誤截圖與訊息文字判斷根因；`wrangler.json` 本身是純 JSON，已確認格式正確（沒有多餘逗號、引號配對正確）。麻煩使用者這次先執行 `wrangler secret put ADMIN_USERNAME` 確認不會再跳出設定檔驗證錯誤，如果還有問題請把新的錯誤訊息貼給我。
+
+### 2026-07-17（第十三次追加：上一輪判斷錯了，改回 Pages 專案，`worker.js` 更名為 `_worker.js`）
+
+上一輪拿掉 `pages_build_output_dir`、把 README 全部改成不帶 `pages` 的指令之後，使用者照做執行 `wrangler secret put ADMIN_USERNAME`，這次 wrangler 跳出的訊息是：
+
+```text
+WARNING  Pages now has wrangler.json support.
+We detected a configuration file at ...\wrangler.json but it is missing the "pages_build_output_dir" field, required by Pages.
+If you would like to use this configuration file for your project, please use "pages_build_output_dir" to specify the directory of static files to upload.
+Ignoring configuration file for now.
+
+X  ERROR  Missing Pages project name. Use --project-name <name> to specify which project to manage secrets for.
+```
+
+這則訊息才是真正決定性的證據：wrangler 會先去查 Cloudflare 帳號上、跟 `wrangler.json` 裡 `name` 對應的專案**實際登記成什麼類型**，而不是只看本機檔案內容；「Missing Pages project name」代表 wrangler 認定帳號上這個專案本來就是 **Pages 專案**。回頭看最一開始（第一次执行 `wrangler secret put ADMIN_USERNAME`）跳出的「run a Workers-specific command in a Pages project」，其實就已經是同一個結論，只是上一輪我看到「跟 `main`/`assets` 衝突」的錯誤訊息，就倒推成「這是 Workers 專案、要拿掉 `pages_build_output_dir`」，方向反了——衝突確實存在，但該拿掉的是 `main`/`assets`，不是 `pages_build_output_dir`。
+
+- 調整 [wrangler.json](wrangler.json)：拿掉上一輪加的 `"main": "worker.js"` 與 `"assets": { "directory": "." }`，改回 `"pages_build_output_dir": "."`。Pages 專案本來就不吃 `main`/`assets` 這兩個 Workers 專用欄位（跟上上一輪那則錯誤訊息「Configuration file for Pages projects does not support "main"/"assets"」完全對得上）。
+- 檔案更名 `worker.js` → [_worker.js](_worker.js)（用 `git mv` 保留版本紀錄）：Cloudflare Pages 的 Advanced Mode 是靠**檔名**（放在輸出目錄根目錄、檔名固定叫 `_worker.js`）讓 Pages 接管所有路由，不是像 Workers 專案那樣靠 `wrangler.json` 的 `main` 欄位指定進入點；改成 Pages 模式後，`env.ASSETS` 由 Pages 自動注入，程式碼本身完全不用改。
+- 調整 [README.md](README.md)：所有 wrangler 指令改回帶 `pages` 的版本（`wrangler pages secret put`、`wrangler pages deploy .`、`wrangler pages dev .`），並把「初始化指令」段落的說明改成如實反映「這是帳號上已經登記好的 Pages 專案」這個結論的來源（wrangler 實際查詢結果，不是憑本機檔案猜的）。
+- 新增 [.gitignore](.gitignore) 規則 `.wrangler/`：使用者本機執行 wrangler 指令後會產生 `.wrangler/` 快取資料夾，不需要進版控。
+- 說明：這是這幾輪來回裡第二次因為誤判 Workers／Pages 而改錯方向，老實記錄下來；這次的判斷依據是使用者提供的第二則錯誤訊息裡「Missing Pages project name」這句話，比上一輪單看「main/pages_build_output_dir 衝突」的訊息更直接地指向帳號端的實際專案類型，理論上這次是正確方向，但因為本機沒有 Cloudflare 帳號權限、無法自己跑 `wrangler pages secret put` 驗證，還是需要使用者實際執行一次確認。
