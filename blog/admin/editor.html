@@ -293,6 +293,20 @@
       margin-bottom: 14px;
     }
 
+    .storage-banner {
+      font-size: 0.86rem;
+      color: var(--muted);
+    }
+
+    .storage-banner.is-warning {
+      color: #fbbf24;
+    }
+
+    .storage-banner.is-stopped {
+      color: #fca5a5;
+      font-weight: 600;
+    }
+
     @media (max-width: 860px) {
       .editor-grid {
         grid-template-columns: 1fr;
@@ -305,6 +319,7 @@
     <div class="topbar">
       <h1>Admin 發文後台</h1>
       <div style="display:flex; align-items:center; gap:12px;">
+        <span class="storage-banner" id="storage-banner"></span>
         <span class="who" id="who-label"></span>
         <button type="button" id="logout-button">登出</button>
       </div>
@@ -416,6 +431,35 @@
       } catch {
         window.location.href = "login.html";
         return false;
+      }
+    }
+
+    function formatGB(bytes) {
+      return (bytes / 1024 / 1024 / 1024).toFixed(2);
+    }
+
+    function renderStorageBanner(status) {
+      const el = document.getElementById("storage-banner");
+      if (!el || !status) return;
+
+      el.classList.toggle("is-warning", status.isWarning && !status.isStopped);
+      el.classList.toggle("is-stopped", status.isStopped);
+
+      if (status.isStopped) {
+        el.textContent = `⚠ R2 已達上限（${formatGB(status.usedBytes)}GB / 10GB），上傳功能已暫停`;
+      } else if (status.isWarning) {
+        el.textContent = `⚠ R2 用量 ${formatGB(status.usedBytes)}GB / 10GB，接近上限`;
+      } else {
+        el.textContent = `R2 用量 ${formatGB(status.usedBytes)}GB / 10GB`;
+      }
+    }
+
+    async function refreshStorageStatus() {
+      try {
+        const data = await apiFetch("/api/admin/storage");
+        renderStorageBanner(data);
+      } catch {
+        // 讀不到用量狀態不影響其他後台功能，安靜略過即可。
       }
     }
 
@@ -707,7 +751,8 @@
       try {
         const data = await uploadFile(file);
         insertAtCursor(`![${file.name}](${data.url})`);
-        setUploadFeedback("圖片已插入。");
+        setUploadFeedback(data.warning || "圖片已插入。", Boolean(data.warning));
+        refreshStorageStatus();
       } catch (error) {
         setUploadFeedback(error.message, true);
       }
@@ -721,7 +766,8 @@
       try {
         const data = await uploadFile(file);
         insertAtCursor(`!pdf[${file.name}](${data.url})`);
-        setUploadFeedback("PDF 已插入。");
+        setUploadFeedback(data.warning || "PDF 已插入。", Boolean(data.warning));
+        refreshStorageStatus();
       } catch (error) {
         setUploadFeedback(error.message, true);
       }
@@ -747,6 +793,7 @@
       await refreshPostList();
       await refreshCategoryOptions();
       await loadCommentPageKeys();
+      await refreshStorageStatus();
     })();
   </script>
 </body>

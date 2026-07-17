@@ -28,11 +28,33 @@
       padding: 22px;
       font-family: "Segoe UI", "Noto Sans TC", sans-serif;
       color: var(--text);
+      background: var(--bg);
+    }
+
+    .bg-photo-layer {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      opacity: 0;
+      transition: opacity 1.6s ease;
+    }
+
+    .bg-photo-layer.is-active {
+      opacity: 1;
+    }
+
+    .bg-tint-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
       background:
         linear-gradient(140deg, rgba(9, 15, 29, 0.12), rgba(18, 37, 68, 0.09), rgba(26, 23, 64, 0.08)),
         radial-gradient(circle at 18% 16%, rgba(56, 189, 248, 0.04), transparent 36%),
-        radial-gradient(circle at 86% 84%, rgba(129, 140, 248, 0.04), transparent 38%),
-        url("picture/bg2.png?v=20260323e") center/cover no-repeat fixed;
+        radial-gradient(circle at 86% 84%, rgba(129, 140, 248, 0.04), transparent 38%);
     }
 
     .post-wrap {
@@ -294,6 +316,10 @@
   </style>
 </head>
 <body>
+  <div class="bg-photo-layer" id="bg-layer-a" aria-hidden="true"></div>
+  <div class="bg-photo-layer" id="bg-layer-b" aria-hidden="true"></div>
+  <div class="bg-tint-overlay" aria-hidden="true"></div>
+
   <main class="post-wrap">
     <a class="top-link" href="../index.html">回到首頁</a>
     <h1 id="post-title" class="post-title">載入中...</h1>
@@ -330,25 +356,25 @@
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <script src="../assets/engagement.js" defer></script>
   <script src="../assets/markdown-render.js"></script>
+  <script src="../assets/bg-rotation.js" defer></script>
 
   <script>
-    const { parseFrontMatter, markdownToHtml } = window.MarkdownRender;
+    const { markdownToHtml } = window.MarkdownRender;
 
-    async function loadStaticPost(safeFile) {
-      const postPath = `posts/${safeFile}`;
-      const response = await fetch(postPath, { cache: "no-store" });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const BG_ROTATION_IMAGES = [
+      "picture/bg2.png",
+      "picture/bg1.png"
+    ];
+    const BG_ROTATION_INTERVAL_MS = 20000;
 
-      const markdown = await response.text();
-      const { meta, body } = parseFrontMatter(markdown);
-      return {
-        title: meta.title || safeFile,
-        date: meta.date || "未設定日期",
-        category: meta.category || "未分類",
-        bodyHtml: markdownToHtml(body, safeFile),
-        pageKey: `post:${postPath}`
-      };
-    }
+    window.addEventListener("DOMContentLoaded", () => {
+      window.BackgroundRotation?.init({
+        layerAId: "bg-layer-a",
+        layerBId: "bg-layer-b",
+        images: BG_ROTATION_IMAGES,
+        intervalMs: BG_ROTATION_INTERVAL_MS
+      });
+    });
 
     async function loadDbPost(slug) {
       const response = await fetch(`/api/posts/${encodeURIComponent(slug)}`, { cache: "no-store" });
@@ -382,11 +408,9 @@
       }
 
       const params = new URLSearchParams(window.location.search);
-      const source = params.get("source");
       const slug = params.get("slug");
-      const file = params.get("file");
 
-      if (source !== "db" && !file) {
+      if (!slug) {
         errorEl.hidden = false;
         errorEl.textContent = "找不到文章參數，請從首頁重新進入。";
         titleEl.textContent = "無法載入文章";
@@ -394,16 +418,14 @@
       }
 
       try {
-        const post = source === "db"
-          ? await loadDbPost(slug)
-          : await loadStaticPost(file.replace(/\.\./g, "").replace(/^\//, ""));
+        const post = await loadDbPost(slug);
 
         titleEl.textContent = post.title;
         metaEl.textContent = `${post.date} | ${post.category}`;
         bodyEl.innerHTML = post.bodyHtml;
 
         if (engagementEl) {
-          // 文章頁的互動資料以 page key 分開統計每篇文章（靜態檔用檔名、後台文章用 slug）。
+          // 文章頁的互動資料以 page key 分開統計每篇文章。
           engagementEl.dataset.pageKey = post.pageKey;
           engagementEl.dataset.pageTitle = post.title;
           engagementEl.dataset.turnstileSiteKey = "";

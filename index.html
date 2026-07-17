@@ -53,12 +53,34 @@
       padding: 24px;
       font-family: "Segoe UI", "Noto Sans TC", sans-serif;
       color: var(--text);
+      background: var(--bg-1);
+    }
+
+    .bg-photo-layer {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      opacity: 0;
+      transition: opacity 1.6s ease;
+    }
+
+    .bg-photo-layer.is-active {
+      opacity: 1;
+    }
+
+    .bg-tint-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
       background:
         linear-gradient(140deg, rgba(9, 15, 29, 0.12), rgba(18, 37, 68, 0.09) 45%, rgba(26, 23, 64, 0.08)),
         radial-gradient(circle at 14% 16%, rgba(56, 189, 248, 0.04), transparent 36%),
         radial-gradient(circle at 88% 14%, rgba(52, 211, 153, 0.03), transparent 34%),
-        radial-gradient(circle at 80% 82%, rgba(129, 140, 248, 0.04), transparent 38%),
-        url("blog/picture/bg2.png?v=20260323e") center/cover no-repeat fixed;
+        radial-gradient(circle at 80% 82%, rgba(129, 140, 248, 0.04), transparent 38%);
     }
 
     .page-layout {
@@ -252,12 +274,6 @@
       color: #a5b4fc;
     }
 
-    .hint {
-      margin-top: 10px;
-      color: #bfdbfe;
-      font-size: 0.92rem;
-    }
-
     .fun-box {
       margin-top: 14px;
       flex: 1;
@@ -360,12 +376,6 @@
       margin: 0;
       font-size: clamp(1.5rem, 2.6vw, 2rem);
       letter-spacing: 0.02em;
-    }
-
-    .content-subtitle {
-      margin: 10px 0 0;
-      color: #bfdbfe;
-      line-height: 1.65;
     }
 
     .content-grid {
@@ -820,6 +830,10 @@
   </style>
 </head>
 <body>
+  <div class="bg-photo-layer" id="bg-layer-a" aria-hidden="true"></div>
+  <div class="bg-photo-layer" id="bg-layer-b" aria-hidden="true"></div>
+  <div class="bg-tint-overlay" aria-hidden="true"></div>
+
   <section class="welcome-modal" id="welcomeModal" aria-live="polite" aria-label="進站歡迎視窗">
     <div class="welcome-modal-card">
       <h2 class="welcome-modal-title">歡迎來到我的部落格! 目前網頁已經在 Cloudflare 上面正常運作!</h2>
@@ -985,9 +999,16 @@
   </template>
 
   <script src="assets/engagement.js" defer></script>
+  <script src="assets/bg-rotation.js" defer></script>
 
   <script>
-    const BLOG_INDEX_PATH = "blog/posts/index.json";
+    // 之後要換/加背景圖片，改這個陣列就好；每隔 BG_ROTATION_INTERVAL_MS 會淡入淡出切換到下一張。
+    const BG_ROTATION_IMAGES = [
+      "blog/picture/bg2.png",
+      "blog/picture/bg1.png"
+    ];
+    const BG_ROTATION_INTERVAL_MS = 20000;
+
     const RECENT_DOING_TEXT_PATH = "content/recent-doing.txt";
     const SELF_INTRO_TEXT_PATH = "content/self-intro.txt";
     const RECENT_BLOG_LIMIT = 4;
@@ -1145,6 +1166,13 @@
       loadEditableTextSections();
       initFunQuoteBox();
       initAdminLogin();
+
+      window.BackgroundRotation?.init({
+        layerAId: "bg-layer-a",
+        layerBId: "bg-layer-b",
+        images: BG_ROTATION_IMAGES,
+        intervalMs: BG_ROTATION_INTERVAL_MS
+      });
     });
 
     function initAdminLogin() {
@@ -1212,113 +1240,33 @@
       });
     }
 
-    function parseFrontMatter(text) {
-      const normalized = String(text).replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
-      const match = normalized.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-      if (!match) return { meta: {}, body: text };
-
-      const meta = {};
-      const lines = match[1].split(/\r?\n/);
-      for (const line of lines) {
-        const idx = line.indexOf(":");
-        if (idx === -1) continue;
-        const key = line.slice(0, idx).trim();
-        const value = line.slice(idx + 1).trim();
-        if (key) meta[key] = value;
-      }
-
-      return { meta, body: match[2] };
-    }
-
-    function getBodyTitle(body) {
-      const normalized = String(body || "").replace(/\r\n/g, "\n");
-      const lines = normalized.split("\n");
-      for (const rawLine of lines) {
-        const line = rawLine.trim();
-        if (line.startsWith("# ")) {
-          return line.slice(2).trim();
-        }
-        if (line.startsWith("## ")) {
-          return line.slice(3).trim();
-        }
-      }
-      return "";
-    }
-
-    function getExcerpt(meta, body) {
-      if (meta.excerpt) return meta.excerpt;
-      const plain = body.replace(/\s+/g, " ").trim();
-      if (!plain) return "尚無摘要";
-      return plain.length > 90 ? `${plain.slice(0, 90)}...` : plain;
-    }
-
     async function loadMarkdownPosts() {
       if (window.location.protocol === "file:") {
         throw new Error("偵測到 file:// 直接開啟，瀏覽器會阻擋 fetch。請改用 GitHub Pages 或本機伺服器預覽。");
       }
 
-      const indexResponse = await fetch(BLOG_INDEX_PATH, { cache: "no-store" });
-      if (!indexResponse.ok) {
-        throw new Error(`讀取文章索引失敗：HTTP ${indexResponse.status}`);
+      const response = await fetch("/api/posts?status=published", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`讀取文章列表失敗：HTTP ${response.status}`);
       }
 
-      const indexData = await indexResponse.json();
-      const files = Array.isArray(indexData.posts) ? indexData.posts : [];
-
-      const posts = [];
-      const missingFiles = [];
-
-      for (const fileName of files) {
-        const safeName = String(fileName).replace(/\.\./g, "").replace(/^\//, "");
-        const path = `blog/posts/${safeName}`;
-        const response = await fetch(path, { cache: "no-store" });
-        if (!response.ok) {
-          missingFiles.push(`${safeName} (HTTP ${response.status})`);
-          continue;
-        }
-
-        const markdown = await response.text();
-        const { meta, body } = parseFrontMatter(markdown);
-        const displayTitle = meta.title || getBodyTitle(body) || "未命名文章";
-        posts.push({
-          date: meta.date || "0000-00-00",
-          title: displayTitle,
-          category: meta.category || "未分類",
-          excerpt: getExcerpt(meta, body),
-          url: `blog/post.html?file=${encodeURIComponent(safeName)}`
-        });
+      const data = await response.json();
+      if (!data?.ok || !Array.isArray(data.posts)) {
+        throw new Error(data?.error || "讀取文章列表失敗。");
       }
 
-      if (missingFiles.length) {
-        console.warn("下列文章檔案讀取失敗:", missingFiles.join(", "));
-      }
-
-      // 後台（D1）文章是選配的：沒有 Cloudflare API 或尚未發文時安靜略過，只顯示既有的靜態文章。
-      try {
-        const dbResponse = await fetch("/api/posts?status=published", { cache: "no-store" });
-        if (dbResponse.ok) {
-          const dbData = await dbResponse.json();
-          if (dbData?.ok && Array.isArray(dbData.posts)) {
-            for (const post of dbData.posts) {
-              posts.push({
-                date: post.date || "0000-00-00",
-                title: post.title || "未命名文章",
-                category: post.category || "未分類",
-                excerpt: post.excerpt || "尚無摘要",
-                url: `blog/post.html?source=db&slug=${encodeURIComponent(post.slug)}`
-              });
-            }
-          }
-        }
-      } catch (error) {
-        console.warn("後台文章讀取失敗，僅顯示靜態文章：", error);
-      }
+      const posts = data.posts.map((post) => ({
+        date: post.date || "0000-00-00",
+        title: post.title || "未命名文章",
+        category: post.category || "未分類",
+        excerpt: post.excerpt || "尚無摘要",
+        url: `blog/post.html?slug=${encodeURIComponent(post.slug)}`
+      }));
 
       const categories = Array.from(new Set(posts.map((post) => post.category || "未分類"))).sort((a, b) => a.localeCompare(b, "zh-Hant"));
 
       return {
         posts: posts.sort((a, b) => String(b.date).localeCompare(String(a.date))),
-        missingFiles,
         categories
       };
     }
@@ -1466,12 +1414,10 @@
       const listContainer = document.getElementById("all-post-list");
 
       let sortedPosts = [];
-      let missingFiles = [];
       let categories = [];
       try {
         const result = await loadMarkdownPosts();
         sortedPosts = result.posts;
-        missingFiles = result.missingFiles;
         categories = result.categories;
       } catch (error) {
         container.innerHTML = `<p class="blog-excerpt">Blog 讀取失敗：${error.message}<br>提示：本機請用伺服器開啟（例如 Live Server 或 http.server）。</p>`;
@@ -1487,19 +1433,6 @@
       allPostState.category = categories.includes(allPostState.category) ? allPostState.category : "all";
 
       container.innerHTML = "";
-      if (missingFiles.length) {
-        const warn = document.createElement("p");
-        warn.className = "blog-excerpt";
-        warn.textContent = `部分文章尚未讀取成功：${missingFiles.join(", ")}`;
-        container.appendChild(warn);
-
-        if (listContainer) {
-          const warnItem = document.createElement("li");
-          warnItem.className = "all-post-note";
-          warnItem.textContent = `部分文章尚未讀取成功：${missingFiles.join(", ")}`;
-          listContainer.insertAdjacentElement("beforebegin", warnItem);
-        }
-      }
 
       if (!sortedPosts.length) {
         const empty = document.createElement("p");

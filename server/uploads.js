@@ -1,8 +1,27 @@
 import { jsonResponse, toHex, normalizeText } from "./http.js";
-import { recordUpload } from "./posts.js";
+import { recordUpload, getStorageUsageBytes } from "./posts.js";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
+
+// Cloudflare R2 免費額度是 10GB；98% 當硬性上限（保留安全緩衝，避免真的超額被收費），
+// 90% 開始在成功上傳的回應裡夾帶警示，讓後台在真的爆掉之前就能提醒你清理。
+const R2_FREE_TIER_BYTES = 10 * 1024 * 1024 * 1024;
+const STOP_THRESHOLD_BYTES = Math.floor(R2_FREE_TIER_BYTES * 0.98);
+const WARN_THRESHOLD_BYTES = Math.floor(R2_FREE_TIER_BYTES * 0.9);
+
+export async function getStorageStatus(env) {
+  const usedBytes = await getStorageUsageBytes(env);
+  return {
+    usedBytes,
+    totalBytes: R2_FREE_TIER_BYTES,
+    warnThresholdBytes: WARN_THRESHOLD_BYTES,
+    stopThresholdBytes: STOP_THRESHOLD_BYTES,
+    percent: Math.round((usedBytes / R2_FREE_TIER_BYTES) * 1000) / 10,
+    isWarning: usedBytes >= WARN_THRESHOLD_BYTES,
+    isStopped: usedBytes >= STOP_THRESHOLD_BYTES
+  };
+}
 
 const SIGNATURES = [
   { kind: "image", ext: "png", contentType: "image/png", check: (b) => matchBytes(b, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) },
@@ -60,6 +79,14 @@ export async function handleUpload(request, env) {
     return jsonResponse({ ok: false, error: "R2 綁定尚未設定，請先建立 uploads bucket 並補上 wrangler.json 綁定。" }, 503);
   }
 
+  const usedBytes = await getStorageUsageBytes(env);
+  if (usedBytes + buffer.byteLength >= STOP_THRESHOLD_BYTES) {
+    return jsonResponse({
+      ok: false,
+      error: `儲存空間已接近 Cloudflare R2 免費額度上限（已用 ${(usedBytes / 1024 / 1024 / 1024).toFixed(2)}GB / 10GB），為了避免超額產生費用，已暫停上傳功能。請先清理不需要的檔案。`
+    }, 503);
+  }
+
   const now = new Date();
   const yyyy = now.getUTCFullYear();
   const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
@@ -77,7 +104,12 @@ export async function handleUpload(request, env) {
     sizeBytes: buffer.byteLength
   });
 
-  return jsonResponse({ ok: true, url: `/api/files/${r2Key}`, key: r2Key, kind: signature.kind });
+  const totalAfterUpload = usedBytes + buffer.byteLength;
+  const warning = totalAfterUpload >= WARN_THRESHOLD_BYTES
+    ? `提醒：R2 儲存空間已使用 ${(totalAfterUpload / 1024 / 1024 / 1024).toFixed(2)}GB / 10GB，接近免費額度上限，建議清理不需要的檔案。`
+    : null;
+
+  return jsonResponse({ ok: true, url: `/api/files/${r2Key}`, key: r2Key, kind: signature.kind, warning });
 }
 
 const FILE_KEY_PATTERN = /^uploads\/\d{4}\/\d{2}\/[a-f0-9]{24}\.(png|jpg|gif|webp|pdf)$/;

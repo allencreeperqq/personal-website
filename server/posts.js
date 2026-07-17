@@ -162,3 +162,14 @@ export async function recordUpload(env, { r2Key, kind, originalName, sizeBytes }
     VALUES (?, ?, ?, ?, ?)
   `).bind(r2Key, kind, normalizeText(originalName, 200, ""), Number(sizeBytes) || 0, now).run();
 }
+
+// 用 uploads 表累計已上傳的檔案大小，當作 R2 用量的估計值──這個 bucket 只拿來放
+// 使用者透過後台上傳的檔案，所以這個總和跟實際 R2 用量應該相符（沒有計入舊文章
+// 保留的靜態圖片/PDF，那些從來沒有進過 R2）。
+export async function getStorageUsageBytes(env) {
+  await ensurePostsSchema(env);
+  const row = await env.DB.prepare(`
+    SELECT COALESCE(SUM(size_bytes), 0) AS total FROM uploads
+  `).first();
+  return Number(row?.total || 0);
+}

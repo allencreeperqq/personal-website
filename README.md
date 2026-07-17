@@ -43,10 +43,10 @@ wrangler dev
 ### 這是什麼
 
 - `blog/admin/login.html`：admin 登入頁。
-- `blog/admin/editor.html`：發文 / 編輯文章 / 上傳圖片與 PDF / 留言管理，都在同一頁。
-- 新文章存在 Cloudflare D1 的 `posts` 資料表，首頁「全部貼文列表」會自動把 D1 文章和既有 `blog/posts/*.md` 文章合併顯示、依日期排序。
-- 既有的 `.md` 文章完全不受影響，繼續當唯讀的「舊文章」正常顯示；之後要不要把舊文章也搬進資料庫，之後再決定。
-- 上傳的圖片與 PDF 存在 Cloudflare R2，透過 `/api/files/...` 對外提供讀取。
+- `blog/admin/editor.html`：發文 / 編輯文章 / 上傳圖片與 PDF / 留言管理，都在同一頁，右上角還會顯示目前 R2 用量。
+- **所有文章（含舊文章）都已經搬進 Cloudflare D1 的 `posts` 資料表**，首頁「全部貼文列表」單純從 D1 讀取；`blog/posts/*.md` 這種本地檔案的發文方式已經完全停用，不再需要手動加檔案、改 `index.json`。
+- 舊文章裡的圖片／PDF 仍然是靜態檔案（保留在 `blog/posts/` 底下的子資料夾裡），內文的相對路徑已經改寫成從網站根目錄開始的絕對路徑，所以透過 D1 渲染時一樣能正確載入；新文章上傳的圖片/PDF 則存在 Cloudflare R2，透過 `/api/files/...` 對外提供讀取。
+- 上傳功能內建 R2 免費額度（10GB）保護：用量達 90% 會在上傳成功的回應裡夾帶警示、後台也會顯示提醒，達 98% 會直接擋下新的上傳（避免真的超額被收費），細節見下方「R2 儲存空間保護」。
 
 ### 你需要做的事（第一次設定）
 
@@ -66,7 +66,7 @@ wrangler dev
    wrangler d1 migrations apply personal_website
    ```
 
-   為什麼：套用 `migrations/0002_admin_cms.sql`，新增 `posts`（文章）與 `uploads`（上傳紀錄）兩張表。跟目前留言功能的建置方式相同；就算忘記跑這一步，程式本身在第一次請求時也會自動 `CREATE TABLE IF NOT EXISTS` 補齊。
+   為什麼：套用 `migrations/0002_admin_cms.sql`（新增 `posts`／`uploads` 兩張表；就算忘記跑，程式在第一次請求時也會自動 `CREATE TABLE IF NOT EXISTS` 補齊）以及 `migrations/0003_seed_legacy_posts.sql`（把原本 `blog/posts/*.md` 的 10 篇舊文章一次性寫進 `posts` 表——這一個沒有自動補齊機制，一定要手動跑一次，不然首頁會看不到舊文章）。
 
 3. **設定兩個 secret（帳號、密碼都是明文，你自己決定內容）**
 
@@ -95,9 +95,17 @@ wrangler dev
 - 文章 markdown 渲染沿用既有 `blog/post.html` 「先跳脫 HTML 再套版型」的邏輯（`assets/markdown-render.js`），本來就會擋掉 `<script>`／HTML 注入，這一項也沒有變。
 - 這是你主動選擇的簡化（拿掉密碼雜湊、CSRF、登入速率限制），適合單人使用的個人網站；如果之後想要更高的安全性，隨時可以再加回來。
 
+### R2 儲存空間保護
+
+- [server/uploads.js](server/uploads.js) 的 `handleUpload` 每次上傳前，會先用 [server/posts.js](server/posts.js) 的 `getStorageUsageBytes()`（`SELECT SUM(size_bytes) FROM uploads`）估算目前用量，這個估算只涵蓋透過後台上傳、真的存進 R2 的檔案，不含舊文章保留的靜態圖片/PDF（那些從來沒有進過 R2，不佔用額度）。
+- **90%（9GB）**：上傳仍會成功，但回應會多帶一個 `warning` 訊息，後台編輯器會把它顯示在儲存/上傳的提示區；右上角的「R2 用量」也會變成黃色。
+- **98%（約 9.8GB）**：新的上傳會直接被擋下（回傳 503 + 清楚的錯誤訊息），保留 2% 安全緩衝，避免真的衝到 10GB 上限被 Cloudflare 收費；已經上傳成功的檔案、既有文章、留言、按讚等其他功能完全不受影響，只有「上傳新檔案」這個動作被鎖住。
+- 新增 `GET /api/admin/storage`（需要登入）回傳 `{ usedBytes, totalBytes, percent, isWarning, isStopped }`，後台頁面載入時與每次上傳完成後都會呼叫，即時更新右上角的用量顯示。
+- 如果之後想調整門檻，改 [server/uploads.js](server/uploads.js) 裡的 `WARN_THRESHOLD_BYTES` / `STOP_THRESHOLD_BYTES` 兩個常數即可。
+
 ### 已知限制 / 之後可以做的事
 
-- [worker.js](worker.js) 是 Workers 的進入點（`wrangler.json` 的 `"main"` 指到它），會接管所有路由並透過 `env.ASSETS.fetch(request)` 讀取靜態檔案；這代表 `functions/api/engagement.js` 目前其實不會被執行（是舊留下來的重複邏輯，那是 Pages Functions 的機制，這個專案沒有在用），這次沒有動它，之後有空可以考慮刪掉避免混淆。
+- `functions/api/engagement.js` 這份舊留言 API 邏輯已經確認是死碼（正式環境走的是 [worker.js](worker.js) 的 Workers Advanced Mode 路由，`functions/` 目錄根本不會被執行），已經整個刪除，不用再擔心混淆。
 - 目前只做了「單一 admin 帳號」，沒有多使用者資料表；如果之後想開放多人共同管理，需要另外設計。
 - 本機的自動化測試是用假的 D1/R2/KV 模擬物件跑的（見下方版本歷程），還沒有連到你真實的 Cloudflare 資源；上面 4 個步驟做完後，還是建議用 `wrangler dev`（wrangler 支援本機模擬 D1/R2）跑一次登入 → 發文 → 上傳圖片/PDF → 留言管理的完整流程，確認跟真實 D1/R2 接起來也正常。
 
@@ -396,3 +404,45 @@ Executing user deploy command: npx wrangler versions upload
 - 調整 [blog/admin/editor.html](blog/admin/editor.html)：改成同時追蹤「滑鼠按下（`mousedown`）的位置」與「滑鼠放開（`click`）的位置」，只有兩者都在背景本身時才真的關閉視窗；在文字框裡選字或拖曳調整大小、只是放開位置剛好在背景上的情況，不會再被誤判成點背景。
 - 調整 [index.html](index.html)：首頁的 Admin 登入彈出視窗用的是同一種「點背景關閉」寫法，雖然欄位比較小、機率較低，但屬於同一個 bug 模式，一併用同樣的方式修正，避免以後在登入視窗上也遇到一樣的問題。
 - 說明：這是純前端的事件處理邏輯修正，沒有動到任何後端 API；已用本機伺服器確認兩個頁面都能正常載入、新的 `mousedown`/`click` 追蹤邏輯有正確輸出在 HTML 中。受限於本機沒有瀏覽器工具，沒辦法實際模擬拖曳滑鼠到視窗外放開這個動作來重現/驗證修復效果，麻煩使用者之後編輯文章時特別注意一下：在 `textarea` 裡選字或拖曳調整大小時，就算滑鼠不小心滑到編輯視窗外面才放開，視窗應該不會再被關閉了；如果還有遇到同樣的狀況，麻煩盡量描述當下具體在做什麼操作（例如是不是在選取文字、拖曳調整框框大小等），能幫助進一步定位。
+
+### 2026-07-18（第十八次追加：一次做完五件事——克隆原始版本、背景輪播、文章全面搬進 D1、專案清理、R2 用量保護）
+
+使用者一次提出五個需求，先用 `AskUserQuestion` 確認了三個有實質取捨的決定（克隆資料夾名稱、舊 `.md` 檔要保留還是刪除、quota 超標要停到什麼程度），再依序執行：
+
+**1. 克隆留言系統導入前的原始版本**
+
+- 發現 `main` 分支從頭到尾都沒有合併過留言/後台系統（那些工作都在 `後端匿名留言功能api建置` 與 `feature/admin-forum-cms` 兩個分支上進行，從未 merge 回 `main`），所以 `main`／`origin/main` 本來就是使用者要的「原始版本」，不需要額外找 commit。
+- 用 `git clone --branch main --single-branch` 從 GitHub 遠端複製一份到 `D:\coding\personal-website-original`，已確認裡面完整包含全部 10 篇原始文章、對應的圖片與 PDF。這份 clone 完全獨立於目前工作中的 repo，之後對 `feature/admin-forum-cms` 分支做任何事都不會影響到它。
+
+**2. 新增計時背景圖片輪播功能**
+
+- 新增 [assets/bg-rotation.js](assets/bg-rotation.js)：共用的背景輪播模組，用兩層 `.bg-photo-layer`（一張顯示中、一張預載下一張）搭配 `opacity` transition 做淡入淡出crossfade，換圖前會先 `Image` 預載，載入失敗會跳過那一輪、下次間隔再試下一張，不會讓畫面卡住或閃現破圖。
+- 調整 [index.html](index.html) 與 [blog/post.html](blog/post.html)：原本寫死在 `body` 的單張背景圖，改成 `.bg-photo-layer`（照片，會輪播）+ `.bg-tint-overlay`（原本的深色調性漸層，固定不動，維持既有配色風格）兩層疊加；各自新增 `BG_ROTATION_IMAGES` 陣列（首頁跟文章頁的圖片相對路徑不同，各自維護一份）與 `BG_ROTATION_INTERVAL_MS`（預設 20 秒）。**之後你要提供新的背景圖片時，把檔案放進 `blog/picture/`，再把檔名加進這兩個頁面各自的 `BG_ROTATION_IMAGES` 陣列就會自動輪播進去，不需要改其他程式碼。**
+
+**3～4. 把舊文章全面搬進 D1，`.md` 本地端作業正式退休**
+
+- 寫了一支本機用的一次性 Node 腳本（沒有進 repo），讀取 `blog/posts/index.json` 列出的 10 篇文章，解析 front matter，把內文裡的相對圖片／PDF 路徑（含少數用反斜線 `\` 的 Windows 風格路徑）一律改寫成從網站根目錄開始的絕對路徑（`/blog/posts/...`），slug 用檔名轉寫成乾淨的英數格式（例如 `2026-03-23-homemade NAS.md` → `2026-03-23-homemade-nas`），輸出成新的 [migrations/0003_seed_legacy_posts.sql](migrations/0003_seed_legacy_posts.sql)。
+- 用 Node 24 內建的 `node:sqlite` 建立一個記憶體資料庫，實際套用這份 migration SQL 驗證：10 篇文章全部成功寫入、標題裡的單引號（例如 `Ren'py`）正確跳脫、圖片與 PDF 路徑都改寫成絕對路徑、沒有任何 SQL 語法錯誤。
+- 調整 [index.html](index.html)：`loadMarkdownPosts()` 整個簡化成只呼叫 `GET /api/posts?status=published`，移除了原本讀取 `blog/posts/index.json` + 逐篇 fetch `.md` 檔的迴圈、以及對應的 `parseFrontMatter`／`getBodyTitle`／`getExcerpt` 三個輔助函式（連同已經永遠不會觸發的 `missingFiles` 警示邏輯一併移除）。
+- 調整 [blog/post.html](blog/post.html)：移除 `loadStaticPost()`（讀 `?file=xxx.md` 的路徑）與相關的 `source=db` 判斷，只保留 `loadDbPost()`，網址格式統一簡化成 `blog/post.html?slug=xxx`。
+- **刪除** `blog/posts/*.md`（10 篇文章原始檔）與 `blog/posts/index.json`：內容已經完整搬進 D1，且這份備份已經確認存在於 `D:\coding\personal-website-original`。**圖片與 PDF 子資料夾（`2026-03-23-homemade NAS pic/`、`2026-04-11-complexity/`、`.../computer use/`、`pdf file/` 等）完全沒有刪除**，仍然是靜態檔案留在 repo 裡，因為遷移後的文章內文改用絕對路徑繼續引用它們——沒有把它們搬進 R2（R2 是給後台新上傳的檔案用的，舊圖片維持免費的靜態檔案，也不會占用 R2 的 10GB 額度）。
+
+**5. 專案清理**
+
+- 刪除 `functions/api/engagement.js` 與整個 `functions/` 目錄：確認過正式環境是 [worker.js](worker.js) 的 Workers Advanced Mode 在接管所有路由，`functions/` 目錄從來沒被執行過，是純粹的死碼。
+- 刪除 `blog/standard.md`、`blog/posts/template.md`：兩份都是舊 `.md` 本地端發文流程的操作說明文件，現在發文流程改成後台編輯器，這兩份文件連同它們描述的流程一起退休。
+- 刪除三張沒有被任何程式碼引用的重複圖片：`blog/picture/bg1.JPEG`、`blog/picture/bg2.JPEG`（跟現在實際使用的 `bg1.png`／`bg2.png` 是同張圖的不同格式副本，只有 `.png` 版本真的被引用）、`blog/picture/profile pic.PNG`（跟實際使用的 `profile pic.jpg` 重複，大小寫不同的另一份檔案）。
+- 移除 [server/http.js](server/http.js) 裡的 `fromHex`／`base64UrlEncode`／`base64UrlDecode` 三個函式：這些是舊版 PBKDF2 + 簽章 session token 機制留下的，帳密簡化之後完全沒有任何地方呼叫了。
+- 移除 [index.html](index.html) 與 [assets/engagement.css](assets/engagement.css) 裡各一個從來沒被任何 HTML 元素用到的 CSS class（`.content-subtitle`、`.hint`、`.cf-engagement__subtitle`）。用寫好的小腳本比對每個 `<style>` 裡定義的 class 是否有出現在對應的 HTML/JS 裡才抓出來的，不是憑印象猜的。
+- 沒有動：`migrations/` 底下所有既有的 migration 檔（`0001`／`0002`／舊的）、`server/*.js` 其餘所有 export、`assets/engagement.js`／`markdown-render.js`／`bg-rotation.js`、`content/*.txt`——這些都確認仍在使用中。
+
+**6. R2 儲存空間保護（避免超過 10GB 免費額度）**
+
+- 新增 [server/posts.js](server/posts.js) 的 `getStorageUsageBytes()`：用 `SELECT SUM(size_bytes) FROM uploads` 估算目前 R2 用量（`uploads` 表在每次上傳成功時都會記一筆，這個估算只涵蓋透過後台上傳的檔案，不含舊文章保留的靜態圖片）。
+- 調整 [server/uploads.js](server/uploads.js)：`handleUpload` 在真正寫入 R2 之前，先檢查「目前用量 + 這次檔案大小」是否達到 98%（約 9.8GB，留 2% 安全緩衝）——達到就直接回傳 503 並拒絕上傳，不會真的寫進 R2；用量達到 90%（9GB）以上但還沒到硬性上限時，上傳仍會成功，但回應會多帶一個 `warning` 欄位。新增 `getStorageStatus()` 統一組裝 `{ usedBytes, totalBytes, percent, isWarning, isStopped }` 這組狀態。
+- 調整 [worker.js](worker.js)：新增 `GET /api/admin/storage`（需要登入）回傳上述用量狀態。
+- 調整 [blog/admin/editor.html](blog/admin/editor.html)：右上角新增即時的「R2 用量」顯示，一般時是灰色文字、接近上限時變黃色、真的被擋住時變紅色粗體；頁面載入時與每次上傳圖片/PDF 完成後都會重新抓一次最新用量。
+- 用假的 D1 模擬不同用量情境（0GB／9.5GB／9.9GB 已用）寫了 11 項測試，全部通過：確認用量低時上傳正常無警示、90～98% 之間會成功但帶警示訊息、98% 以上會被 503 擋下且不會真的呼叫 R2 的 `put`、`GET /api/admin/storage` 在已登入/未登入時分別回傳正確結果。
+- 說明：因為停止上傳只鎖「新增檔案」這一個動作，網站首頁、既有文章、留言、按讚等其他功能完全不受影響，符合使用者確認過的「只停止新的上傳功能」選項。
+
+**整體測試總結**：這一輪新增/修改的邏輯（D1 migration SQL、R2 quota 檢查、`GET /api/admin/storage`）都用本機模擬環境（`node:sqlite` 記憶體資料庫 + 假的 D1/R2 物件）實際跑過，不是只看程式碼推測；連同先前累積的測試，目前總共有 40+ 項自動化測試涵蓋登入、CSRF 拿掉後的行為、文章 CRUD、留言管理、markdown 渲染跳脫、上傳驗證、R2 quota 五大塊。仍然沒有連到使用者真實的 Cloudflare 帳號，`migrations/0003_seed_legacy_posts.sql` 需要使用者手動執行 `wrangler d1 migrations apply personal_website` 才會真的把舊文章寫進正式的 D1 資料庫；在那之前，首頁的「全部貼文列表」會因為 D1 裡還沒有資料而顯示空白，這是預期中的過渡狀態，跑完 migration 就會恢復正常。

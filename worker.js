@@ -13,7 +13,7 @@ import {
   SESSION_TTL_SECONDS
 } from "./server/auth.js";
 import { listPosts, getPostBySlug, createPost, updatePost, deletePost } from "./server/posts.js";
-import { handleUpload, handleFileGet } from "./server/uploads.js";
+import { handleUpload, handleFileGet, getStorageStatus } from "./server/uploads.js";
 import { listCommentsForAdmin, listCommentPageKeys, setCommentVisibility } from "./server/comments-admin.js";
 
 let schemaReady;
@@ -364,6 +364,15 @@ async function handleAdminUpload(request, env) {
   return handleUpload(request, env);
 }
 
+async function handleAdminStorage(request, env) {
+  if (!env.DB) return jsonResponse({ ok: false, error: "D1 綁定尚未設定。" }, 503);
+  const auth = requireAdmin(request, env);
+  if (!auth.ok) return jsonResponse({ ok: false, error: auth.error }, auth.status);
+
+  const status = await getStorageStatus(env);
+  return jsonResponse({ ok: true, ...status });
+}
+
 // ---- Admin：留言管理 ----
 
 async function handleAdminCommentsList(request, env) {
@@ -452,6 +461,10 @@ async function router(request, env) {
 
   if (pathname === "/api/admin/uploads" && method === "POST") {
     return handleAdminUpload(request, env);
+  }
+
+  if (pathname === "/api/admin/storage" && method === "GET") {
+    return handleAdminStorage(request, env);
   }
 
   if (pathname.startsWith("/api/files/") && method === "GET") {

@@ -27,13 +27,6 @@
   font-size: 1.08rem;
 }
 
-.cf-engagement__subtitle {
-  margin: 6px 0 0;
-  color: #cbd5e1;
-  line-height: 1.7;
-  font-size: 0.95rem;
-}
-
 .cf-engagement__meter {
   display: flex;
   flex-wrap: wrap;

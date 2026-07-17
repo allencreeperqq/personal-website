@@ -40,29 +40,6 @@ export function toHex(bytes) {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export function fromHex(hex) {
-  const clean = String(hex || "");
-  const bytes = new Uint8Array(clean.length / 2);
-  for (let i = 0; i < bytes.length; i += 1) {
-    bytes[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
-  }
-  return bytes;
-}
-
-export function base64UrlEncode(bytes) {
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-export function base64UrlDecode(value) {
-  const padded = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
-  const binary = atob(padded);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
-
 export function parseCookies(request) {
   const header = request.headers.get("cookie") || "";
   const cookies = {};
