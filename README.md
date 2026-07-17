@@ -377,3 +377,13 @@ Executing user deploy command: npx wrangler versions upload
 - 調整 [blog/admin/editor.html](blog/admin/editor.html)：`refreshPostList()` 改成自己 try/catch，抓到錯誤就在文章列表區塊顯示紅字錯誤訊息（比照 `loadCommentPageKeys()` 原本就有的寫法），不會再讓例外往外拋、拖垮後面的初始化步驟。
 - 調整 [blog/admin/editor.html](blog/admin/editor.html)：把「新增文章／編輯文章」表單從頁面內固定區塊，改成彈出視窗（`#editor-modal`，沿用專案裡既有的 modal 樣式模式）。「文章管理」區塊上方新增「＋ 新增文章」按鈕開啟空白表單；文章列表的「編輯」按鈕改成開啟同一個視窗並帶入該篇文章內容；視窗內新增「關閉」按鈕，點擊視窗外的半透明背景也會關閉。原本表單裡的「新增文章（清空表單）」按鈕保留在視窗內，改名為「清空表單」（單純清空欄位，不關視窗）。
 - 說明：沒有實際連到使用者的 D1 資料庫，沒辦法直接重現「文章管理／留言管理空白」的畫面，這個 bug 是透過重新閱讀 `init()` 的 `await` 執行順序推理出來的邏輯漏洞（一個未被捕捉的例外會讓後續所有初始化步驟全部中止），彈窗改版則已用本機伺服器確認 HTML 結構與按鈕綁定都有正確輸出；受限於本機沒有瀏覽器工具，還沒有實際點擊測試彈窗開關與空白畫面是否真的修好，麻煩使用者重新整理後台頁面實際測試一次，如果「文章管理」或「留言管理」還是空白，這次應該至少會顯示紅字的錯誤訊息內容，把訊息貼給我就能繼續往下查。
+
+### 2026-07-17（第十六次追加：抓到「文章管理」500 的真正原因——前後端路徑對不起來）
+
+上一輪修好之後，使用者實測回報：「留言管理」正常了（證實 `init()` 級聯失敗的修正有效），但「文章管理」顯示紅字「文章列表讀取失敗：請求失敗（HTTP 500）」，沒有更多細節。用本機測試腳本模擬同樣的呼叫，才發現真正的問題：
+
+- **根因**：[blog/admin/editor.html](blog/admin/editor.html) 呼叫的是 `GET /api/admin/posts?status=all`，但 [worker.js](worker.js) 的路由表裡從來沒有註冊過這個路徑——只有 `GET /api/posts`（本來就有支援 `?status=all`，帶這個參數時會另外檢查登入狀態）。路徑對不上，請求會直接落到 `router()` 回傳 `null`、掉進 `env.ASSETS.fetch(request)` 的靜態檔案回退邏輯，這才是問題根源，跟 D1／資料庫完全無關。用測試腳本重現：對錯的路徑發請求，回應是 404（掉進靜態資源），不是後端的 API 邏輯在執行。
+- 調整 [blog/admin/editor.html](blog/admin/editor.html)：`refreshPostList()` 改呼叫正確、原本就存在且已測試過的 `GET /api/posts?status=all`。
+- 調整 [worker.js](worker.js)：`fetch()` 進入點外層加上 try/catch，任何 API handler 裡沒接住的例外，現在都會轉成帶實際錯誤訊息的 JSON（`{ ok: false, error: "..." }` + 500），不會再變成 Cloudflare 的通用 500 頁面、前端只看得到「HTTP 500」四個字卻不知道原因。
+- 調整 [server/posts.js](server/posts.js)：`ensurePostsSchema()` 建表若失敗，改成清掉快取的 `postsSchemaReady`，讓下一次呼叫可以重新嘗試，避免同一個 Worker isolate 存活期間永遠卡在同一個失敗的 promise 上。
+- 說明：這次用本機測試腳本實際模擬了兩種情境並都通過——(1) 對舊的錯誤路徑 `/api/admin/posts?status=all` 發請求，確認它從路由表裡就沒被接住、掉進靜態資源回退（404），證明路徑不符確實是問題所在；(2) 讓假的 D1 在查詢時丟出例外，確認新的頂層 try/catch 會把實際錯誤文字（例如「no such table: posts」）原封不動地回傳到前端，而不是變成空白的 500。這兩項連同之前的 15 項路由/驗證測試全部通過（共 19 項）。同樣沒有連到使用者的真實 D1，麻煩使用者重新整理後台頁面確認「文章管理」現在能正常顯示；如果還有問題，因為現在錯誤訊息會真的顯示出來，直接把畫面上的文字貼給我就能精準定位。
