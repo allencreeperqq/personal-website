@@ -541,7 +541,7 @@
       const container = document.getElementById("post-list");
       let data;
       try {
-        data = await apiFetch("/api/admin/posts?status=all");
+        data = await apiFetch("/api/posts?status=all");
       } catch (error) {
         container.innerHTML = `<p style="color:#fca5a5">文章列表讀取失敗：${error.message}</p>`;
         return;

@@ -473,9 +473,19 @@ async function router(request, env) {
 
 export default {
   async fetch(request, env, context) {
-    const routed = await router(request, env);
-    if (routed) return routed;
+    try {
+      const routed = await router(request, env);
+      if (routed) return routed;
 
-    return env.ASSETS.fetch(request);
+      return env.ASSETS.fetch(request);
+    } catch (error) {
+      // 沒有這層的話，任何 API handler 裡沒接住的例外都會變成 Cloudflare 的通用 500 頁面，
+      // 前端只看得到 HTTP 500、看不到實際原因；這裡統一轉成帶錯誤訊息的 JSON。
+      console.error("unhandled router error", error);
+      return jsonResponse({
+        ok: false,
+        error: `伺服器發生未預期錯誤：${error instanceof Error ? error.message : String(error)}`
+      }, 500);
+    }
   }
 };

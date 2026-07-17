@@ -36,7 +36,12 @@ export async function ensurePostsSchema(env) {
           uploaded_at TEXT NOT NULL
         )
       `).run();
-    })();
+    })().catch((error) => {
+      // 建表失敗的話，把快取清掉讓下一次呼叫重新嘗試，避免同一個 isolate 存活期間
+      // 永遠卡在同一個失敗的 promise 上（例如第一次遇到暫時性的 D1 錯誤）。
+      postsSchemaReady = undefined;
+      throw error;
+    });
   }
 
   await postsSchemaReady;
