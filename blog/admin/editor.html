@@ -260,6 +260,39 @@
       opacity: 0.55;
     }
 
+    .editor-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(2, 6, 23, 0.68);
+      backdrop-filter: blur(3px);
+    }
+
+    .editor-modal[hidden] {
+      display: none;
+    }
+
+    .editor-modal-card {
+      width: min(1100px, 100%);
+      max-height: 92vh;
+      overflow-y: auto;
+      border: 1px solid rgba(125, 211, 252, 0.4);
+      border-radius: 14px;
+      background: linear-gradient(165deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.96));
+      box-shadow: 0 24px 45px rgba(0, 0, 0, 0.45);
+      padding: 20px;
+    }
+
+    .editor-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
     @media (max-width: 860px) {
       .editor-grid {
         grid-template-columns: 1fr;
@@ -278,7 +311,32 @@
     </div>
 
     <section class="panel">
-      <h2 id="editor-heading">新增文章</h2>
+      <div class="topbar">
+        <h2 style="margin:0;">文章管理</h2>
+        <button type="button" class="btn-primary" id="open-new-post-btn">＋ 新增文章</button>
+      </div>
+      <div class="post-list" id="post-list"></div>
+    </section>
+
+    <section class="panel">
+      <h2>留言管理</h2>
+      <div class="comment-controls">
+        <label class="field" style="margin:0;">
+          <span>選擇頁面</span>
+          <select id="comment-page-select"></select>
+        </label>
+        <button type="button" id="comment-refresh-btn">重新整理</button>
+      </div>
+      <div class="comment-list" id="comment-list"></div>
+    </section>
+  </div>
+
+  <section class="editor-modal" id="editor-modal" hidden aria-label="文章編輯視窗">
+    <div class="editor-modal-card">
+      <div class="editor-modal-header">
+        <h2 id="editor-heading" style="margin:0;">新增文章</h2>
+        <button type="button" id="close-editor-btn">關閉</button>
+      </div>
       <div class="editor-grid">
         <div>
           <div class="row-2">
@@ -322,7 +380,7 @@
 
           <div class="form-actions">
             <button type="button" class="btn-primary" id="save-post-btn">儲存</button>
-            <button type="button" id="new-post-btn">新增文章（清空表單）</button>
+            <button type="button" id="new-post-btn">清空表單</button>
             <p class="form-feedback" id="post-feedback"></p>
           </div>
         </div>
@@ -332,25 +390,8 @@
           <div class="preview-pane" id="preview-pane"></div>
         </div>
       </div>
-    </section>
-
-    <section class="panel">
-      <h2>文章管理</h2>
-      <div class="post-list" id="post-list"></div>
-    </section>
-
-    <section class="panel">
-      <h2>留言管理</h2>
-      <div class="comment-controls">
-        <label class="field" style="margin:0;">
-          <span>選擇頁面</span>
-          <select id="comment-page-select"></select>
-        </label>
-        <button type="button" id="comment-refresh-btn">重新整理</button>
-      </div>
-      <div class="comment-list" id="comment-list"></div>
-    </section>
-  </div>
+    </div>
+  </section>
 
   <script src="../../assets/markdown-render.js"></script>
   <script>
@@ -413,6 +454,14 @@
       return apiFetch("/api/admin/uploads", { method: "POST", body: formData });
     }
 
+    function openEditorModal() {
+      document.getElementById("editor-modal").hidden = false;
+    }
+
+    function closeEditorModal() {
+      document.getElementById("editor-modal").hidden = true;
+    }
+
     function resetForm() {
       currentSlug = null;
       document.getElementById("editor-heading").textContent = "新增文章";
@@ -435,6 +484,7 @@
       document.getElementById("post-status").value = post.status;
       setFormFeedback("");
       updatePreview();
+      openEditorModal();
     }
 
     async function savePost() {
@@ -488,9 +538,16 @@
     let allPosts = [];
 
     async function refreshPostList() {
-      const data = await apiFetch("/api/admin/posts?status=all");
-      allPosts = data.posts;
       const container = document.getElementById("post-list");
+      let data;
+      try {
+        data = await apiFetch("/api/admin/posts?status=all");
+      } catch (error) {
+        container.innerHTML = `<p style="color:#fca5a5">文章列表讀取失敗：${error.message}</p>`;
+        return;
+      }
+
+      allPosts = data.posts;
       container.innerHTML = "";
 
       if (!allPosts.length) {
@@ -613,6 +670,15 @@
     document.getElementById("post-content").addEventListener("input", updatePreview);
     document.getElementById("save-post-btn").addEventListener("click", savePost);
     document.getElementById("new-post-btn").addEventListener("click", resetForm);
+
+    document.getElementById("open-new-post-btn").addEventListener("click", () => {
+      resetForm();
+      openEditorModal();
+    });
+    document.getElementById("close-editor-btn").addEventListener("click", closeEditorModal);
+    document.getElementById("editor-modal").addEventListener("click", (event) => {
+      if (event.target.id === "editor-modal") closeEditorModal();
+    });
 
     document.getElementById("insert-image-btn").addEventListener("click", () => {
       document.getElementById("image-file-input").click();

@@ -368,3 +368,12 @@ Executing user deploy command: npx wrangler versions upload
 - 調整 [README.md](README.md)：所有指令改回**不帶 `pages`** 的版本（`wrangler secret put`、`wrangler deploy`、`wrangler dev`），「初始化指令」段落的說明改成引用這次的建置紀錄證據，並補充「這個專案接了 Workers Builds，push 到有連接的分支會自動觸發部署」這件事——代表接下來只要 `git push`，不一定需要手動 `wrangler deploy`。
 - 重新對改回 `worker.js` 的內容跑一次完整測試（`checkCredentials`／`requireAdmin`／完整登入路由流程），15 項全部通過，確認改檔名跟改回 `main`/`assets` 設定沒有影響任何邏輯。
 - 說明：這是這幾輪來回裡第三次調整 Workers／Pages 的判斷方向；前兩次都是根據錯誤訊息的字面意思推測，這次是根據 Cloudflare 實際自動執行的建置指令內容（`npx wrangler versions upload`）確認，證據力比前兩次都強，之後除非又出現矛盾的新證據，應該不會再變。麻煩使用者重新執行 `wrangler secret put ADMIN_USERNAME` / `wrangler secret put ADMIN_PASSWORD`，並 push 這次的修正讓 Workers Builds 自動重新建置一次，確認網站上的「Admin 帳密尚未設定完成」訊息是否消失。
+
+### 2026-07-17（第十五次追加：後台編輯器改成彈出視窗，修好「文章管理」「留言管理」空白的 bug）
+
+使用者在儀表板上直接用「變數與機密」設定好 `ADMIN_USERNAME`／`ADMIN_PASSWORD` 之後回報三個問題：發文表單希望改成彈出框、「文章管理」列表沒有顯示、「留言管理」的頁面下拉選單選不到東西。前兩項是真正的功能調整，後兩項追出來是同一個 bug：
+
+- **根因**：[blog/admin/editor.html](blog/admin/editor.html) 的 `init()` 依序 `await refreshPostList()` → `await refreshCategoryOptions()` → `await loadCommentPageKeys()`，但 `refreshPostList()` 內部沒有自己 catch 錯誤，只要它拋出例外（例如 API 回應非預期格式、或任何暫時性錯誤），整條 `await` 鏈就會直接中斷，後面的 `refreshCategoryOptions()` 跟 `loadCommentPageKeys()` 根本不會執行——這正好對應「文章管理」跟「留言管理」同時掛掉的現象，而且因為沒有任何地方 catch 這個例外，畫面上也不會顯示任何錯誤訊息，只會安靜地空白。
+- 調整 [blog/admin/editor.html](blog/admin/editor.html)：`refreshPostList()` 改成自己 try/catch，抓到錯誤就在文章列表區塊顯示紅字錯誤訊息（比照 `loadCommentPageKeys()` 原本就有的寫法），不會再讓例外往外拋、拖垮後面的初始化步驟。
+- 調整 [blog/admin/editor.html](blog/admin/editor.html)：把「新增文章／編輯文章」表單從頁面內固定區塊，改成彈出視窗（`#editor-modal`，沿用專案裡既有的 modal 樣式模式）。「文章管理」區塊上方新增「＋ 新增文章」按鈕開啟空白表單；文章列表的「編輯」按鈕改成開啟同一個視窗並帶入該篇文章內容；視窗內新增「關閉」按鈕，點擊視窗外的半透明背景也會關閉。原本表單裡的「新增文章（清空表單）」按鈕保留在視窗內，改名為「清空表單」（單純清空欄位，不關視窗）。
+- 說明：沒有實際連到使用者的 D1 資料庫，沒辦法直接重現「文章管理／留言管理空白」的畫面，這個 bug 是透過重新閱讀 `init()` 的 `await` 執行順序推理出來的邏輯漏洞（一個未被捕捉的例外會讓後續所有初始化步驟全部中止），彈窗改版則已用本機伺服器確認 HTML 結構與按鈕綁定都有正確輸出；受限於本機沒有瀏覽器工具，還沒有實際點擊測試彈窗開關與空白畫面是否真的修好，麻煩使用者重新整理後台頁面實際測試一次，如果「文章管理」或「留言管理」還是空白，這次應該至少會顯示紅字的錯誤訊息內容，把訊息貼給我就能繼續往下查。
