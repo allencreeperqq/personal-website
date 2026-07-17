@@ -676,8 +676,20 @@
       openEditorModal();
     });
     document.getElementById("close-editor-btn").addEventListener("click", closeEditorModal);
-    document.getElementById("editor-modal").addEventListener("click", (event) => {
-      if (event.target.id === "editor-modal") closeEditorModal();
+
+    // 只有「在背景上按下滑鼠、也在背景上放開」才算是真的點背景關閉；
+    // 這樣在文字框裡選字或拖曳 textarea 右下角調整大小時，就算滑鼠放開的位置
+    // 剛好落在編輯視窗外面，也不會被誤判成「點擊背景」而把整個表單關掉、清空。
+    let editorModalMouseDownOnBackdrop = false;
+    const editorModalEl = document.getElementById("editor-modal");
+    editorModalEl.addEventListener("mousedown", (event) => {
+      editorModalMouseDownOnBackdrop = event.target.id === "editor-modal";
+    });
+    editorModalEl.addEventListener("click", (event) => {
+      if (event.target.id === "editor-modal" && editorModalMouseDownOnBackdrop) {
+        closeEditorModal();
+      }
+      editorModalMouseDownOnBackdrop = false;
     });
 
     document.getElementById("insert-image-btn").addEventListener("click", () => {

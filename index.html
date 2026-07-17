@@ -1166,8 +1166,15 @@
         modal.hidden = true;
       });
 
+      // 只有在背景上按下滑鼠、也在背景上放開才算點背景關閉，避免在欄位裡選取文字時
+      // 滑鼠放開位置剛好落在背景上，被誤判成點背景而意外關閉視窗。
+      let modalMouseDownOnBackdrop = false;
+      modal.addEventListener("mousedown", (event) => {
+        modalMouseDownOnBackdrop = event.target === modal;
+      });
       modal.addEventListener("click", (event) => {
-        if (event.target === modal) modal.hidden = true;
+        if (event.target === modal && modalMouseDownOnBackdrop) modal.hidden = true;
+        modalMouseDownOnBackdrop = false;
       });
 
       form.addEventListener("submit", async (event) => {
