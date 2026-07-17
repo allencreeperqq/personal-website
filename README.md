@@ -17,10 +17,10 @@ wrangler d1 migrations apply personal_website
 1. 把實際 D1 database id 填回 [wrangler.json](wrangler.json) 的 `DB` 綁定後，再重新部署。
 
 1. KV namespace 目前是選配；如果之後要加留言防刷限流，再把 namespace ID 補進 [wrangler.json](wrangler.json)。
-1. 若要啟用留言防機器人，先在 Cloudflare 建立 Turnstile，再執行：
+1. 若要啟用留言防機器人，先在 Cloudflare 建立 Turnstile，再執行（這個專案是 Cloudflare **Pages** 專案，`wrangler.json` 裡有 `pages_build_output_dir`，所以要用 `wrangler pages secret put`，不是 `wrangler secret put`，不然會出現 "It looks like you've run a Workers-specific command in a Pages project" 的錯誤）：
 
 ```powershell
-wrangler secret put TURNSTILE_SECRET_KEY
+wrangler pages secret put TURNSTILE_SECRET_KEY
 ```
 
 1. 本機測試 Pages Functions：
@@ -68,15 +68,31 @@ wrangler pages dev .
 
 3. **設定兩個 secret（帳號、密碼都是明文，你自己決定內容）**
 
+   這個專案是 Cloudflare **Pages** 專案（`wrangler.json` 有 `pages_build_output_dir`），要用 `wrangler pages secret put`，不是 `wrangler secret put`（Workers 專案才用這個，兩個是不同指令，混用會出現 "It looks like you've run a Workers-specific command in a Pages project" 的錯誤）：
+
    ```powershell
-   wrangler secret put ADMIN_USERNAME
-   wrangler secret put ADMIN_PASSWORD
+   wrangler pages secret put ADMIN_USERNAME
+   wrangler pages secret put ADMIN_PASSWORD
+   ```
+
+   如果指令跳出來要你選 / 指定專案，代表要加上 `--project-name`（專案名稱就是 `personal-website`，跟 `wrangler.json` 裡的 `name` 一致）：
+
+   ```powershell
+   wrangler pages secret put ADMIN_USERNAME --project-name personal-website
+   wrangler pages secret put ADMIN_PASSWORD --project-name personal-website
    ```
 
    為什麼：Cloudflare secret 是加密保存、不會出現在 `wrangler.json` 或 git repo 裡的敏感資料存放方式；帳號密碼一樣不會進 git，但這裡是直接存明文比對，不做雜湊，設定起來最簡單，代價是安全性比雜湊版本低（見下方安全性摘要）。
 
-4. **重新部署**（沿用你現有的 `wrangler deploy` 流程）。
-   為什麼：新的 R2 綁定與兩個 secret 都要部署後才會生效。
+4. **重新部署**
+
+   同樣因為這是 Pages 專案，部署要用：
+
+   ```powershell
+   wrangler pages deploy .
+   ```
+
+   為什麼：新的 R2 綁定與兩個 secret 都要部署後才會生效；`wrangler deploy`（沒有 `pages`）是給 Workers 專案用的指令，在這個專案上會出現跟上面一樣的錯誤。
 
 ### 安全性摘要（已簡化版本）
 
