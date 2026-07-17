@@ -20,16 +20,16 @@ wrangler d1 migrations apply personal_website
 1. 若要啟用留言防機器人，先在 Cloudflare 建立 Turnstile，再執行：
 
 ```powershell
-wrangler pages secret put TURNSTILE_SECRET_KEY
+wrangler secret put TURNSTILE_SECRET_KEY
 ```
 
 1. 本機測試：
 
 ```powershell
-wrangler pages dev .
+wrangler dev
 ```
 
-> **這是 Cloudflare Pages 專案**（Cloudflare 帳號上已經是用 Pages 建立的，這是 wrangler CLI 實際查詢後確認的，不是本機檔案說了算），所以指令一律用帶 `pages` 的版本：`wrangler pages secret put`、`wrangler pages deploy .`、`wrangler pages dev .`。`wrangler.json` 用 `"pages_build_output_dir": "."`；路由邏輯放在專案根目錄的 [_worker.js](_worker.js)（Pages 的 Advanced Mode 檔名慣例，Cloudflare 看到這個檔名就會用它接管所有路由，並自動提供 `env.ASSETS` 讀取靜態檔案，不需要在 `wrangler.json` 額外宣告 `main` 或 `assets`）。這個檔案原本叫 `worker.js`，中途走了一段彎路（先誤判成純 Workers 專案、把 `pages_build_output_dir` 拿掉），後來依照 wrangler 實際回報的錯誤重新確認過根因，才改回現在這個設定，詳見下方版本歷程。
+> **這是 Cloudflare Workers（含靜態資產）專案，用 Workers Builds（Git 整合的自動建置）部署，不是 Cloudflare Pages。** 證據來自 Cloudflare 自動觸發的建置紀錄，裡面實際執行的是 `npx wrangler versions upload`——這是純 Workers 指令，Pages 專案不會跑這個。所以所有指令都用**不帶 `pages`** 的版本：`wrangler secret put`、`wrangler deploy`、`wrangler dev`。`wrangler.json` 用 `"main": "worker.js"` + `"assets": { "directory": "." }`；`worker.js` 是路由進入點，透過 `env.ASSETS.fetch(request)` 讀取靜態檔案。這個判斷中途來回改了兩次方向（詳見下方版本歷程），這次是根據 Cloudflare 實際的建置紀錄確認的，不是憑錯誤訊息片段推測。
 
 ### 前端設定
 
@@ -71,15 +71,8 @@ wrangler pages dev .
 3. **設定兩個 secret（帳號、密碼都是明文，你自己決定內容）**
 
    ```powershell
-   wrangler pages secret put ADMIN_USERNAME
-   wrangler pages secret put ADMIN_PASSWORD
-   ```
-
-   如果指令跳出來要你選 / 指定專案，代表要加上 `--project-name`（專案名稱就是 `personal-website`，跟 `wrangler.json` 裡的 `name` 一致）：
-
-   ```powershell
-   wrangler pages secret put ADMIN_USERNAME --project-name personal-website
-   wrangler pages secret put ADMIN_PASSWORD --project-name personal-website
+   wrangler secret put ADMIN_USERNAME
+   wrangler secret put ADMIN_PASSWORD
    ```
 
    為什麼：Cloudflare secret 是加密保存、不會出現在 `wrangler.json` 或 git repo 裡的敏感資料存放方式；帳號密碼一樣不會進 git，但這裡是直接存明文比對，不做雜湊，設定起來最簡單，代價是安全性比雜湊版本低（見下方安全性摘要）。
@@ -87,10 +80,10 @@ wrangler pages dev .
 4. **重新部署**
 
    ```powershell
-   wrangler pages deploy .
+   wrangler deploy
    ```
 
-   為什麼：新的 R2 綁定與兩個 secret 都要部署後才會生效。
+   為什麼：新的 R2 綁定與兩個 secret 都要部署後才會生效。這個專案接了 **Workers Builds**（Git 整合自動建置），push 到有連接的分支也會自動觸發建置部署，不一定要手動下這行；但剛設定完 secret 想立刻確認效果的話，手動跑一次最快。
 
 ### 安全性摘要（已簡化版本）
 
@@ -104,9 +97,9 @@ wrangler pages dev .
 
 ### 已知限制 / 之後可以做的事
 
-- 專案根目錄的 [_worker.js](_worker.js) 是 Cloudflare Pages 的 Advanced Mode 入口檔案，會接管所有路由；這代表 `functions/api/engagement.js` 目前在正式環境其實不會被執行（是舊留下來的重複邏輯），這次沒有動它，之後有空可以考慮刪掉避免混淆。
+- [worker.js](worker.js) 是 Workers 的進入點（`wrangler.json` 的 `"main"` 指到它），會接管所有路由並透過 `env.ASSETS.fetch(request)` 讀取靜態檔案；這代表 `functions/api/engagement.js` 目前其實不會被執行（是舊留下來的重複邏輯，那是 Pages Functions 的機制，這個專案沒有在用），這次沒有動它，之後有空可以考慮刪掉避免混淆。
 - 目前只做了「單一 admin 帳號」，沒有多使用者資料表；如果之後想開放多人共同管理，需要另外設計。
-- 本機的自動化測試是用假的 D1/R2/KV 模擬物件跑的（見下方版本歷程），還沒有連到你真實的 Cloudflare 資源；上面 4 個步驟做完後，還是建議用 `wrangler pages dev .`（wrangler 支援本機模擬 D1/R2）跑一次登入 → 發文 → 上傳圖片/PDF → 留言管理的完整流程，確認跟真實 D1/R2 接起來也正常。
+- 本機的自動化測試是用假的 D1/R2/KV 模擬物件跑的（見下方版本歷程），還沒有連到你真實的 Cloudflare 資源；上面 4 個步驟做完後，還是建議用 `wrangler dev`（wrangler 支援本機模擬 D1/R2）跑一次登入 → 發文 → 上傳圖片/PDF → 留言管理的完整流程，確認跟真實 D1/R2 接起來也正常。
 
 ## 常見問題
 
@@ -358,3 +351,20 @@ X  ERROR  Missing Pages project name. Use --project-name <name> to specify which
 - 調整 [README.md](README.md)：所有 wrangler 指令改回帶 `pages` 的版本（`wrangler pages secret put`、`wrangler pages deploy .`、`wrangler pages dev .`），並把「初始化指令」段落的說明改成如實反映「這是帳號上已經登記好的 Pages 專案」這個結論的來源（wrangler 實際查詢結果，不是憑本機檔案猜的）。
 - 新增 [.gitignore](.gitignore) 規則 `.wrangler/`：使用者本機執行 wrangler 指令後會產生 `.wrangler/` 快取資料夾，不需要進版控。
 - 說明：這是這幾輪來回裡第二次因為誤判 Workers／Pages 而改錯方向，老實記錄下來；這次的判斷依據是使用者提供的第二則錯誤訊息裡「Missing Pages project name」這句話，比上一輪單看「main/pages_build_output_dir 衝突」的訊息更直接地指向帳號端的實際專案類型，理論上這次是正確方向，但因為本機沒有 Cloudflare 帳號權限、無法自己跑 `wrangler pages secret put` 驗證，還是需要使用者實際執行一次確認。
+
+### 2026-07-17（第十四次追加：拿到確切證據，改回 Workers 專案——這次是 Cloudflare 自動建置紀錄，不是猜的）
+
+使用者依照上一輪指示執行 `wrangler pages project list`，結果是空的（帳號裡沒有任何 Pages 專案）；照理說接下來要先 `wrangler pages project create` 建立一個新的 Pages 專案。但使用者接著貼出的，其實是 **Cloudflare 自動觸發的建置紀錄**（push code 上去之後系統自己跑的，不是使用者手動執行的指令），內容是：
+
+```text
+Executing user deploy command: npx wrangler versions upload
+✘ [ERROR] Missing entry-point to Worker script or to assets directory
+```
+
+`wrangler versions upload` 是 **Workers Gradual Deployments 專用指令**，Pages 專案完全不會執行到這個指令。這代表帳號上其實接的是 **Workers Builds**（Cloudflare 針對 Workers 的 Git 整合自動建置功能，跟 Pages 的 Git 整合是兩套不同系統），每次 push 到有連接的分支就會自動觸發建置——這解釋了為什麼 `wrangler pages project list` 是空的（因為從頭到尾就沒有 Pages 專案），也解釋了為什麼上一輪的 `pages_build_output_dir` 設定會讓這個自動建置直接失敗（找不到 Workers 需要的 `main`/`assets` 進入點）。這是比先前兩次都更直接的證據（實際執行紀錄，不是錯誤訊息片段），因此照這個修正回去：
+
+- 調整 [wrangler.json](wrangler.json)：拿掉 `"pages_build_output_dir"`，改回 `"main": "worker.js"` + `"assets": { "directory": "." }`。
+- 檔案更名 [_worker.js](_worker.js) → `worker.js`（用 `git mv` 保留版本紀錄，跟上一輪的更名方向相反）。
+- 調整 [README.md](README.md)：所有指令改回**不帶 `pages`** 的版本（`wrangler secret put`、`wrangler deploy`、`wrangler dev`），「初始化指令」段落的說明改成引用這次的建置紀錄證據，並補充「這個專案接了 Workers Builds，push 到有連接的分支會自動觸發部署」這件事——代表接下來只要 `git push`，不一定需要手動 `wrangler deploy`。
+- 重新對改回 `worker.js` 的內容跑一次完整測試（`checkCredentials`／`requireAdmin`／完整登入路由流程），15 項全部通過，確認改檔名跟改回 `main`/`assets` 設定沒有影響任何邏輯。
+- 說明：這是這幾輪來回裡第三次調整 Workers／Pages 的判斷方向；前兩次都是根據錯誤訊息的字面意思推測，這次是根據 Cloudflare 實際自動執行的建置指令內容（`npx wrangler versions upload`）確認，證據力比前兩次都強，之後除非又出現矛盾的新證據，應該不會再變。麻煩使用者重新執行 `wrangler secret put ADMIN_USERNAME` / `wrangler secret put ADMIN_PASSWORD`，並 push 這次的修正讓 Workers Builds 自動重新建置一次，確認網站上的「Admin 帳密尚未設定完成」訊息是否消失。
