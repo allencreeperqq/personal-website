@@ -66,44 +66,33 @@ wrangler pages dev .
 
    為什麼：套用 `migrations/0002_admin_cms.sql`，新增 `posts`（文章）與 `uploads`（上傳紀錄）兩張表。跟目前留言功能的建置方式相同；就算忘記跑這一步，程式本身在第一次請求時也會自動 `CREATE TABLE IF NOT EXISTS` 補齊。
 
-3. **產生密碼 hash（在你自己電腦上做，密碼不會外流）**
-
-   ```powershell
-   node scripts/hash-password.mjs
-   ```
-
-   照提示輸入兩次想要的 admin 密碼，會印出一段 `pbkdf2$...` 開頭的字串。
-   為什麼：這個工具只在你自己電腦執行，密碼明文只存在你當下的終端機記憶體裡，不會寫進任何檔案、不會經過網路、更不會出現在 git 紀錄或跟我的對話裡；之後 Cloudflare 只會拿到這串 hash。
-
-4. **設定三個 secret**
+3. **設定兩個 secret（帳號、密碼都是明文，你自己決定內容）**
 
    ```powershell
    wrangler secret put ADMIN_USERNAME
-   wrangler secret put ADMIN_PASSWORD_HASH   # 貼上第 3 步產生的整串 hash
-   wrangler secret put SESSION_SECRET        # 可用下面指令產生隨機值
-   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   wrangler secret put ADMIN_PASSWORD
    ```
 
-   為什麼：Cloudflare secret 是加密保存、不會出現在 `wrangler.json` 或 git repo 裡的敏感資料存放方式；`SESSION_SECRET` 是用來簽章登入 cookie 的金鑰，外流的話等於任何人都能偽造登入狀態，所以務必透過 `wrangler secret put`、不要寫進任何檔案。
+   為什麼：Cloudflare secret 是加密保存、不會出現在 `wrangler.json` 或 git repo 裡的敏感資料存放方式；帳號密碼一樣不會進 git，但這裡是直接存明文比對，不做雜湊，設定起來最簡單，代價是安全性比雜湊版本低（見下方安全性摘要）。
 
-5. **重新部署**（沿用你現有的 `wrangler deploy` 流程）。
-   為什麼：新的 R2 綁定與三個 secret 都要部署後才會生效。
+4. **重新部署**（沿用你現有的 `wrangler deploy` 流程）。
+   為什麼：新的 R2 綁定與兩個 secret 都要部署後才會生效。
 
-### 安全性摘要
+### 安全性摘要（已簡化版本）
 
-- 密碼只以 PBKDF2-SHA256（10 萬次疊代 + 隨機 salt）雜湊後的 secret 保存，永遠不進 git。
-- 登入用 HMAC 簽名的 `HttpOnly; Secure; SameSite=Strict` cookie，效期 12 小時；要讓所有裝置一次登出，只要重新設定 `SESSION_SECRET` 即可。
-- 所有會修改資料的後台 API 都需要同時通過登入 cookie 驗證 **和** CSRF token 比對（double-submit cookie），且一律在伺服器端重新檢查，前端的登入導轉只是體驗優化。
-- 登入失敗會做速率限制（同 IP 15 分鐘內錯 5 次就先擋），錯誤訊息不透露帳號是否存在，避免帳號列舉。
-- 上傳檔案會檢查實際檔案內容的 magic bytes（不是只看副檔名），只接受 PNG/JPG/GIF/WEBP/PDF，圖片上限 5MB、PDF 上限 20MB，檔名一律換成隨機字串存進 R2，避免路徑穿越或覆蓋既有檔案。
-- 公開的 `GET /api/posts`、`GET /api/posts/:slug` 一律不會回傳草稿（`status = 'draft'`），只有帶正確登入 cookie 的後台請求看得到草稿。
-- 文章 markdown 渲染沿用既有 `blog/post.html` 「先跳脫 HTML 再套版型」的邏輯（現在抽成共用的 `assets/markdown-render.js`），本來就會擋掉 `<script>`／HTML 注入，新舊文章共用同一份渲染器。
+- 為了簡化設定，帳號密碼**直接以明文**存成 Cloudflare secret（`ADMIN_USERNAME` / `ADMIN_PASSWORD`），不做密碼雜湊；登入時純比對字串相等。secret 本身仍然加密存在 Cloudflare、不會進 git，但如果有人拿到你 Cloudflare 帳號的 secret 讀取權限，會直接看到明文密碼（雜湊版本則只會看到雜湊值）。
+- 登入 cookie 直接使用密碼本身當作憑證值（`HttpOnly; Secure; SameSite=Strict`，效期 12 小時），不做額外簽章；要讓所有裝置一次登出，換掉 `ADMIN_PASSWORD` 即可（同時也代表登入密碼變了）。
+- **沒有 CSRF token 保護**、**沒有登入失敗次數限制**，這兩項防護已依需求拿掉；`SameSite=Strict` cookie 本身仍能擋掉大部分瀏覽器的跨站請求偽造情境，但保護力比原本的 double-submit CSRF 弱。
+- 上傳檔案的驗證沒有變：仍會檢查實際檔案內容的 magic bytes（不是只看副檔名），只接受 PNG/JPG/GIF/WEBP/PDF，圖片上限 5MB、PDF 上限 20MB，檔名一律換成隨機字串存進 R2。
+- 公開的 `GET /api/posts`、`GET /api/posts/:slug` 一律不會回傳草稿（`status = 'draft'`），只有帶正確登入 cookie 的後台請求看得到草稿，這一項沒有變。
+- 文章 markdown 渲染沿用既有 `blog/post.html` 「先跳脫 HTML 再套版型」的邏輯（`assets/markdown-render.js`），本來就會擋掉 `<script>`／HTML 注入，這一項也沒有變。
+- 這是你主動選擇的簡化（拿掉密碼雜湊、CSRF、登入速率限制），適合單人使用的個人網站；如果之後想要更高的安全性，隨時可以再加回來。
 
 ### 已知限制 / 之後可以做的事
 
 - `wrangler.json` 裡 `"main": "worker.js"` 搭配 `pages_build_output_dir` 是 Cloudflare Pages 的 Advanced Mode，`worker.js` 會接管所有路由；這代表 `functions/api/engagement.js` 目前在正式環境其實不會被執行（是舊留下來的重複邏輯），這次沒有動它，之後有空可以考慮刪掉避免混淆。
 - 目前只做了「單一 admin 帳號」，沒有多使用者資料表；如果之後想開放多人共同管理，需要另外設計。
-- 本機的自動化測試是用假的 D1/R2/KV 模擬物件跑的（見下方版本歷程），還沒有連到你真實的 Cloudflare 資源；上面 5 個步驟做完後，還是建議用 `wrangler pages dev .`（wrangler 支援本機模擬 D1/R2）跑一次登入 → 發文 → 上傳圖片/PDF → 留言管理的完整流程，確認跟真實 D1/R2 接起來也正常。
+- 本機的自動化測試是用假的 D1/R2/KV 模擬物件跑的（見下方版本歷程），還沒有連到你真實的 Cloudflare 資源；上面 4 個步驟做完後，還是建議用 `wrangler pages dev .`（wrangler 支援本機模擬 D1/R2）跑一次登入 → 發文 → 上傳圖片/PDF → 留言管理的完整流程，確認跟真實 D1/R2 接起來也正常。
 
 ## 常見問題
 
@@ -298,3 +287,23 @@ wrangler pages dev .
   - 以上總共 44 項測試全部通過。
 - **在補測 `scripts/hash-password.mjs` 時，真的測出一個 bug 並修好了**：原本的寫法是每次詢問密碼都重新 `createInterface()` 開一個新的 readline 介面，結果在（測試用的）非互動輸入情境下，第二次詢問「再輸入一次確認」永遠讀不到輸入、卡住不會印出結果。改成整支腳本只建立一個 readline 介面、用 `rl[Symbol.asyncIterator]()` 依序讀兩行輸入之後，重新測試「密碼相符」「密碼不相符」「密碼留空」三種情境都能正確印出訊息或產生 hash，並且額外驗證了產生出來的 hash 字串丟進 `server/auth.js` 的 `verifyPassword()` 真的能正確判斷密碼對錯。
 - 說明：因為工具限制，這次的測試都是用模擬物件（假的 D1/R2/KV）跑的，還沒有連到你真實的 Cloudflare 資源，也還沒有實際打開瀏覽器點過登入頁/後台頁面；`README.md`「已知限制」段落已同步更新，建議你依序做完設定步驟後，用 `wrangler pages dev .` 接上真實模擬環境跑一次完整流程。
+
+### 2026-07-17（第十次追加：首頁加一個 Admin 登入按鈕，不用再記後台網址）
+
+原本要登入後台得直接手動輸入 `blog/admin/login.html` 網址，使用者覺得這樣「登入跟密碼用得太複雜」，希望改成首頁直接有一個按鈕、按下去就能簡單輸入帳號密碼登入。後端的密碼雜湊／session／CSRF 機制本身沒有變動（這些是一次性設定好就不用再管的部分），這次只調整「怎麼進到登入畫面」這件事：
+
+- 調整 [index.html](index.html)：右上角新增一顆小小的「🔑 Admin 登入」按鈕（`.admin-login-button`），樣式走低調的膠囊按鈕，不會搶走一般訪客的注意力。
+- 調整 [index.html](index.html)：新增一個登入用的彈出視窗（`#adminLoginModal`），沿用既有歡迎視窗（`.welcome-modal`）的樣式與開關邏輯，裡面就是帳號／密碼兩個欄位＋登入按鈕，點右上角按鈕就會直接彈出，不用跳頁。
+- 調整 [index.html](index.html)：新增 `initAdminLogin()`，處理開窗／關窗（含點擊背景關閉）、表單送出時呼叫既有的 `POST /api/admin/login`（`credentials: "include"`，帳密驗證、session/CSRF cookie 簽發都還是原本 `worker.js` 那一套），登入成功會直接導到 `blog/admin/editor.html`；失敗會在視窗內顯示錯誤訊息（例如密碼錯誤、登入太頻繁被擋等）。
+- 說明：`blog/admin/login.html` 這個獨立頁面沒有刪除，直接用網址進去一樣可以登入；這次只是在首頁多開一個更順手的入口。純前端調整，沒有動到 `worker.js`／`server/*` 任何後端邏輯，已用 `py -m http.server` 確認頁面能正常載入、新按鈕與視窗元素都有正確輸出在 HTML 中；受限於本機沒有瀏覽器工具，還沒有實際點擊測試登入視窗的彈出與登入流程，建議之後在瀏覽器裡點一次確認。
+
+### 2026-07-17（第十一次追加：依需求拿掉密碼雜湊配置，登入機制整個改回從簡）
+
+使用者表示不需要密碼雜湊那一整套設定，帳號密碼要改回最簡單的方式；確認過後選擇「整個登入機制都簡化」（拿掉密碼雜湊、session 簽章、CSRF、登入速率限制），不是只拿掉雜湊而已。這是一次會降低安全性、但换來設定與程式碼都更少的主動選擇，取捨已經寫進 README 的「安全性摘要」段落，這裡記錄實際改了什麼：
+
+- 改寫 [server/auth.js](server/auth.js)：整個檔案從「PBKDF2 密碼驗證＋HMAC 簽名 session token＋CSRF token 簽發/驗證＋登入速率限制」（原本約 140 行）簡化成「`checkCredentials()` 直接比對 `env.ADMIN_USERNAME`／`env.ADMIN_PASSWORD` 明文字串、`requireAdmin()` 檢查 `admin_session` cookie 是否等於 `env.ADMIN_PASSWORD`」（約 25 行）。不再需要 `SESSION_SECRET`，也拿掉了 `verifyPassword`、`createSessionToken`、`verifySessionToken`、`issueCsrfToken`、`requireCsrf`、`checkLoginRateLimit` 等函式。
+- 調整 [worker.js](worker.js)：`handleAdminLogin` 改成直接呼叫 `checkCredentials()`；登入成功只簽發一個 `admin_session` cookie（值就是密碼本身），不再簽發 `admin_csrf` cookie；`handleAdminMutation`（保護所有會寫入資料的後台 API）拿掉 `requireCsrf` 檢查，只保留登入 cookie 驗證。
+- 調整 [blog/admin/editor.html](blog/admin/editor.html)：拿掉 `getCookie()`／`refreshCsrfToken()`／`csrfToken` 變數，`apiFetch()` 不再附加 `x-csrf-token` header，改回單純的「帶 cookie 打 API」。
+- 刪除 `scripts/hash-password.mjs`：不再需要產生密碼 hash，帳號密碼現在直接透過 `wrangler secret put ADMIN_USERNAME` / `wrangler secret put ADMIN_PASSWORD` 設定明文即可。
+- 調整 [README.md](README.md)：「Admin 後台」章節的設定步驟從 5 步簡化為 4 步（拿掉「產生密碼 hash」那一步，`ADMIN_PASSWORD_HASH` + `SESSION_SECRET` 兩個 secret 合併成一個 `ADMIN_PASSWORD`），「安全性摘要」改寫成如實反映簡化後的安全性（明文密碼 secret、cookie 不簽章、沒有 CSRF、沒有登入速率限制），並說明這是使用者主動選擇的取捨。
+- 說明：改完之後重新在本機用假的 D1 環境跑過一輪測試（`checkCredentials`／`requireAdmin` 各種正確/錯誤帳密與 cookie 情境、`worker.js` 完整路由的登入→拿 cookie→免 CSRF header 直接建立文章→登出流程），共 15 項測試全部通過，確認拿掉 CSRF 之後既有的建立文章流程不會被誤擋、拿掉密碼雜湊後帳密比對邏輯依然正確。同樣受限於本機沒有瀏覽器工具，還沒有實際在瀏覽器裡點過新的登入流程，建議之後用 `wrangler pages dev .` 搭配上方設定步驟實際測一次。

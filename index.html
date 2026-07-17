@@ -681,6 +681,81 @@
       color: #bae6fd;
     }
 
+    .admin-login-button {
+      position: fixed;
+      right: 12px;
+      top: 10px;
+      z-index: 95;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 999px;
+      background: rgba(2, 6, 23, 0.62);
+      color: #9fb0c6;
+      font-size: 0.78rem;
+      padding: 7px 12px;
+      cursor: pointer;
+      transition: border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .admin-login-button:hover {
+      border-color: rgba(125, 211, 252, 0.55);
+      color: #bae6fd;
+    }
+
+    .admin-login-card {
+      text-align: left;
+    }
+
+    .admin-login-card .field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+      color: #dbeafe;
+      font-size: 0.94rem;
+    }
+
+    .admin-login-card .field input {
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 10px;
+      background: rgba(2, 6, 23, 0.72);
+      color: #e2e8f0;
+      padding: 9px 11px;
+      font: inherit;
+    }
+
+    .admin-login-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .admin-login-submit {
+      border: 1px solid rgba(125, 211, 252, 0.6);
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #f8fafc;
+      font: inherit;
+      font-weight: 600;
+      padding: 8px 16px;
+      cursor: pointer;
+    }
+
+    .admin-login-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .admin-login-feedback {
+      margin: 10px 0 0;
+      min-height: 1.3em;
+      font-size: 0.88rem;
+      color: #fca5a5;
+    }
+
+    .admin-login-feedback.is-success {
+      color: #86efac;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .page-layout {
         animation: none;
@@ -751,6 +826,29 @@
       <div class="welcome-modal-actions">
         <button class="welcome-modal-close" type="button" id="closeWelcomeModal" aria-label="關閉歡迎訊息">開始瀏覽</button>
       </div>
+    </div>
+  </section>
+
+  <button class="admin-login-button" type="button" id="openAdminLoginBtn">🔑 Admin 登入</button>
+
+  <section class="welcome-modal" id="adminLoginModal" hidden aria-label="Admin 登入視窗">
+    <div class="welcome-modal-card admin-login-card">
+      <h2 class="welcome-modal-title">Admin 登入</h2>
+      <form id="adminLoginForm" style="margin-top: 14px;">
+        <label class="field">
+          <span>帳號</span>
+          <input type="text" name="username" autocomplete="username" required />
+        </label>
+        <label class="field">
+          <span>密碼</span>
+          <input type="password" name="password" autocomplete="current-password" required />
+        </label>
+        <div class="admin-login-actions">
+          <button class="admin-login-submit" type="submit">登入</button>
+          <button class="welcome-modal-close" type="button" id="closeAdminLoginBtn">取消</button>
+        </div>
+        <p class="admin-login-feedback" id="adminLoginFeedback"></p>
+      </form>
     </div>
   </section>
 
@@ -1046,7 +1144,66 @@
 
       loadEditableTextSections();
       initFunQuoteBox();
+      initAdminLogin();
     });
+
+    function initAdminLogin() {
+      const openBtn = document.getElementById("openAdminLoginBtn");
+      const closeBtn = document.getElementById("closeAdminLoginBtn");
+      const modal = document.getElementById("adminLoginModal");
+      const form = document.getElementById("adminLoginForm");
+      const feedback = document.getElementById("adminLoginFeedback");
+      if (!openBtn || !closeBtn || !modal || !form || !feedback) return;
+
+      openBtn.addEventListener("click", () => {
+        feedback.textContent = "";
+        feedback.classList.remove("is-success");
+        modal.hidden = false;
+        form.username?.focus();
+      });
+
+      closeBtn.addEventListener("click", () => {
+        modal.hidden = true;
+      });
+
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) modal.hidden = true;
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const submitBtn = form.querySelector(".admin-login-submit");
+        submitBtn.disabled = true;
+        feedback.classList.remove("is-success");
+        feedback.textContent = "登入中...";
+
+        try {
+          const response = await fetch("/api/admin/login", {
+            method: "POST",
+            credentials: "include",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              username: form.username.value,
+              password: form.password.value
+            })
+          });
+
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data?.ok) {
+            throw new Error(data?.error || `登入失敗（HTTP ${response.status}）`);
+          }
+
+          feedback.classList.add("is-success");
+          feedback.textContent = "登入成功，正在跳轉...";
+          window.location.href = "blog/admin/editor.html";
+        } catch (error) {
+          feedback.classList.remove("is-success");
+          feedback.textContent = error.message;
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+    }
 
     function parseFrontMatter(text) {
       const normalized = String(text).replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");

@@ -357,23 +357,9 @@
     const { markdownToHtml } = window.MarkdownRender;
 
     let currentSlug = null;
-    let csrfToken = "";
-
-    function getCookie(name) {
-      const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-      return match ? decodeURIComponent(match[1]) : "";
-    }
-
-    function refreshCsrfToken() {
-      csrfToken = getCookie("admin_csrf");
-    }
 
     async function apiFetch(url, options = {}) {
-      const headers = { ...(options.headers || {}) };
-      if (options.method && options.method !== "GET") {
-        headers["x-csrf-token"] = csrfToken;
-      }
-      const response = await fetch(url, { ...options, headers, credentials: "include" });
+      const response = await fetch(url, { ...options, credentials: "include" });
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.ok) {
         throw new Error(data?.error || `請求失敗（HTTP ${response.status}）`);
@@ -385,7 +371,6 @@
       try {
         const data = await apiFetch("/api/admin/me");
         document.getElementById("who-label").textContent = `已登入：${data.username}`;
-        refreshCsrfToken();
         return true;
       } catch {
         window.location.href = "login.html";

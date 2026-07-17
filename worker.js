@@ -7,16 +7,9 @@ import {
   buildClearCookie
 } from "./server/http.js";
 import {
-  verifyPassword,
-  createSessionToken,
+  checkCredentials,
   requireAdmin,
-  requireCsrf,
-  issueCsrfToken,
-  checkLoginRateLimit,
-  recordLoginFailure,
-  clearLoginFailures,
   SESSION_COOKIE,
-  CSRF_COOKIE,
   SESSION_TTL_SECONDS
 } from "./server/auth.js";
 import { listPosts, getPostBySlug, createPost, updatePost, deletePost } from "./server/posts.js";
@@ -261,8 +254,8 @@ async function handleEngagement(request, env) {
 // ---- Admin：登入 / 登出 / 目前狀態 ----
 
 async function handleAdminLogin(request, env) {
-  if (!env.ADMIN_USERNAME || !env.ADMIN_PASSWORD_HASH || !env.SESSION_SECRET) {
-    return jsonResponse({ ok: false, error: "Admin 帳號尚未設定完成，請先設定 ADMIN_USERNAME / ADMIN_PASSWORD_HASH / SESSION_SECRET。" }, 503);
+  if (!env.ADMIN_USERNAME || !env.ADMIN_PASSWORD) {
+    return jsonResponse({ ok: false, error: "Admin 帳密尚未設定完成，請先設定 ADMIN_USERNAME / ADMIN_PASSWORD。" }, 503);
   }
 
   const body = await readJson(request);
@@ -272,52 +265,34 @@ async function handleAdminLogin(request, env) {
     return jsonResponse({ ok: false, error: "請輸入帳號密碼。" }, 400);
   }
 
-  const rate = await checkLoginRateLimit(env, request);
-  if (!rate.ok) {
-    return jsonResponse({ ok: false, error: rate.error }, 429);
-  }
-
-  const validUsername = username === env.ADMIN_USERNAME;
-  const validPassword = await verifyPassword(password, env.ADMIN_PASSWORD_HASH);
-
-  if (!validUsername || !validPassword) {
-    if (rate.key) await recordLoginFailure(env, rate.key, rate.count);
-    // 帳號密碼錯誤都回同一句話，避免讓人猜出帳號是否存在。
+  if (!checkCredentials(env, username, password)) {
     return jsonResponse({ ok: false, error: "帳號或密碼錯誤。" }, 401);
   }
 
-  if (rate.key) await clearLoginFailures(env, rate.key);
-
-  const token = await createSessionToken(env, username);
-  const csrfToken = issueCsrfToken();
-
-  return jsonResponse({ ok: true, username, csrfToken }, 200, [
-    ["set-cookie", buildSetCookie(SESSION_COOKIE, token, { maxAgeSeconds: SESSION_TTL_SECONDS, httpOnly: true })],
-    ["set-cookie", buildSetCookie(CSRF_COOKIE, csrfToken, { maxAgeSeconds: SESSION_TTL_SECONDS, httpOnly: false })]
+  // 最簡化版本：登入 cookie 直接存密碼本身當作憑證，不額外簽章、不做 CSRF token。
+  return jsonResponse({ ok: true, username }, 200, [
+    ["set-cookie", buildSetCookie(SESSION_COOKIE, password, { maxAgeSeconds: SESSION_TTL_SECONDS, httpOnly: true })]
   ]);
 }
 
 function handleAdminLogout() {
   return jsonResponse({ ok: true }, 200, [
-    ["set-cookie", buildClearCookie(SESSION_COOKIE)],
-    ["set-cookie", buildClearCookie(CSRF_COOKIE)]
+    ["set-cookie", buildClearCookie(SESSION_COOKIE)]
   ]);
 }
 
-async function handleAdminMe(request, env) {
-  const auth = await requireAdmin(request, env);
+function handleAdminMe(request, env) {
+  const auth = requireAdmin(request, env);
   if (!auth.ok) return jsonResponse({ ok: false, error: auth.error }, auth.status);
   return jsonResponse({ ok: true, username: auth.username });
 }
 
 // ---- Admin：文章 CRUD ----
 
-async function handleAdminMutation(request, env) {
+function handleAdminMutation(request, env) {
   if (!env.DB) return jsonResponse({ ok: false, error: "D1 綁定尚未設定。" }, 503);
-  const auth = await requireAdmin(request, env);
+  const auth = requireAdmin(request, env);
   if (!auth.ok) return jsonResponse({ ok: false, error: auth.error }, auth.status);
-  const csrf = requireCsrf(request);
-  if (!csrf.ok) return jsonResponse({ ok: false, error: csrf.error }, csrf.status);
   return null; // 檢查都通過
 }
 
@@ -328,7 +303,7 @@ async function handlePostsList(request, env) {
   const wantsAll = url.searchParams.get("status") === "all";
 
   if (wantsAll) {
-    const auth = await requireAdmin(request, env);
+    const auth = requireAdmin(request, env);
     if (!auth.ok) return jsonResponse({ ok: false, error: auth.error }, auth.status);
     const posts = await listPosts(env, { status: "all" });
     return jsonResponse({ ok: true, posts });
