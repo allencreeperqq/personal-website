@@ -17,17 +17,19 @@ wrangler d1 migrations apply personal_website
 1. 把實際 D1 database id 填回 [wrangler.json](wrangler.json) 的 `DB` 綁定後，再重新部署。
 
 1. KV namespace 目前是選配；如果之後要加留言防刷限流，再把 namespace ID 補進 [wrangler.json](wrangler.json)。
-1. 若要啟用留言防機器人，先在 Cloudflare 建立 Turnstile，再執行（這個專案是 Cloudflare **Pages** 專案，`wrangler.json` 裡有 `pages_build_output_dir`，所以要用 `wrangler pages secret put`，不是 `wrangler secret put`，不然會出現 "It looks like you've run a Workers-specific command in a Pages project" 的錯誤）：
+1. 若要啟用留言防機器人，先在 Cloudflare 建立 Turnstile，再執行：
 
 ```powershell
-wrangler pages secret put TURNSTILE_SECRET_KEY
+wrangler secret put TURNSTILE_SECRET_KEY
 ```
 
-1. 本機測試 Pages Functions：
+1. 本機測試：
 
 ```powershell
-wrangler pages dev .
+wrangler dev
 ```
+
+> **這是 Cloudflare Workers（含靜態資產）專案，不是 Pages 專案**，`wrangler.json` 用 `"main": "worker.js"` + `"assets"` 綁定（不是 `pages_build_output_dir`），所以指令一律用不帶 `pages` 的版本：`wrangler secret put`、`wrangler deploy`、`wrangler dev`。曾經誤把 `pages_build_output_dir` 也一起寫進 `wrangler.json`，導致 wrangler 4.x 直接報錯「Configuration file cannot contain both "main" and "pages_build_output_dir"」，已經拿掉，詳見下方版本歷程。
 
 ### 前端設定
 
@@ -68,31 +70,20 @@ wrangler pages dev .
 
 3. **設定兩個 secret（帳號、密碼都是明文，你自己決定內容）**
 
-   這個專案是 Cloudflare **Pages** 專案（`wrangler.json` 有 `pages_build_output_dir`），要用 `wrangler pages secret put`，不是 `wrangler secret put`（Workers 專案才用這個，兩個是不同指令，混用會出現 "It looks like you've run a Workers-specific command in a Pages project" 的錯誤）：
-
    ```powershell
-   wrangler pages secret put ADMIN_USERNAME
-   wrangler pages secret put ADMIN_PASSWORD
-   ```
-
-   如果指令跳出來要你選 / 指定專案，代表要加上 `--project-name`（專案名稱就是 `personal-website`，跟 `wrangler.json` 裡的 `name` 一致）：
-
-   ```powershell
-   wrangler pages secret put ADMIN_USERNAME --project-name personal-website
-   wrangler pages secret put ADMIN_PASSWORD --project-name personal-website
+   wrangler secret put ADMIN_USERNAME
+   wrangler secret put ADMIN_PASSWORD
    ```
 
    為什麼：Cloudflare secret 是加密保存、不會出現在 `wrangler.json` 或 git repo 裡的敏感資料存放方式；帳號密碼一樣不會進 git，但這裡是直接存明文比對，不做雜湊，設定起來最簡單，代價是安全性比雜湊版本低（見下方安全性摘要）。
 
 4. **重新部署**
 
-   同樣因為這是 Pages 專案，部署要用：
-
    ```powershell
-   wrangler pages deploy .
+   wrangler deploy
    ```
 
-   為什麼：新的 R2 綁定與兩個 secret 都要部署後才會生效；`wrangler deploy`（沒有 `pages`）是給 Workers 專案用的指令，在這個專案上會出現跟上面一樣的錯誤。
+   為什麼：新的 R2 綁定與兩個 secret 都要部署後才會生效。
 
 ### 安全性摘要（已簡化版本）
 
@@ -108,7 +99,7 @@ wrangler pages dev .
 
 - `wrangler.json` 裡 `"main": "worker.js"` 搭配 `pages_build_output_dir` 是 Cloudflare Pages 的 Advanced Mode，`worker.js` 會接管所有路由；這代表 `functions/api/engagement.js` 目前在正式環境其實不會被執行（是舊留下來的重複邏輯），這次沒有動它，之後有空可以考慮刪掉避免混淆。
 - 目前只做了「單一 admin 帳號」，沒有多使用者資料表；如果之後想開放多人共同管理，需要另外設計。
-- 本機的自動化測試是用假的 D1/R2/KV 模擬物件跑的（見下方版本歷程），還沒有連到你真實的 Cloudflare 資源；上面 4 個步驟做完後，還是建議用 `wrangler pages dev .`（wrangler 支援本機模擬 D1/R2）跑一次登入 → 發文 → 上傳圖片/PDF → 留言管理的完整流程，確認跟真實 D1/R2 接起來也正常。
+- 本機的自動化測試是用假的 D1/R2/KV 模擬物件跑的（見下方版本歷程），還沒有連到你真實的 Cloudflare 資源；上面 4 個步驟做完後，還是建議用 `wrangler dev`（wrangler 支援本機模擬 D1/R2）跑一次登入 → 發文 → 上傳圖片/PDF → 留言管理的完整流程，確認跟真實 D1/R2 接起來也正常。
 
 ## 常見問題
 
@@ -322,4 +313,20 @@ wrangler pages dev .
 - 調整 [blog/admin/editor.html](blog/admin/editor.html)：拿掉 `getCookie()`／`refreshCsrfToken()`／`csrfToken` 變數，`apiFetch()` 不再附加 `x-csrf-token` header，改回單純的「帶 cookie 打 API」。
 - 刪除 `scripts/hash-password.mjs`：不再需要產生密碼 hash，帳號密碼現在直接透過 `wrangler secret put ADMIN_USERNAME` / `wrangler secret put ADMIN_PASSWORD` 設定明文即可。
 - 調整 [README.md](README.md)：「Admin 後台」章節的設定步驟從 5 步簡化為 4 步（拿掉「產生密碼 hash」那一步，`ADMIN_PASSWORD_HASH` + `SESSION_SECRET` 兩個 secret 合併成一個 `ADMIN_PASSWORD`），「安全性摘要」改寫成如實反映簡化後的安全性（明文密碼 secret、cookie 不簽章、沒有 CSRF、沒有登入速率限制），並說明這是使用者主動選擇的取捨。
-- 說明：改完之後重新在本機用假的 D1 環境跑過一輪測試（`checkCredentials`／`requireAdmin` 各種正確/錯誤帳密與 cookie 情境、`worker.js` 完整路由的登入→拿 cookie→免 CSRF header 直接建立文章→登出流程），共 15 項測試全部通過，確認拿掉 CSRF 之後既有的建立文章流程不會被誤擋、拿掉密碼雜湊後帳密比對邏輯依然正確。同樣受限於本機沒有瀏覽器工具，還沒有實際在瀏覽器裡點過新的登入流程，建議之後用 `wrangler pages dev .` 搭配上方設定步驟實際測一次。
+- 說明：改完之後重新在本機用假的 D1 環境跑過一輪測試（`checkCredentials`／`requireAdmin` 各種正確/錯誤帳密與 cookie 情境、`worker.js` 完整路由的登入→拿 cookie→免 CSRF header 直接建立文章→登出流程），共 15 項測試全部通過，確認拿掉 CSRF 之後既有的建立文章流程不會被誤擋、拿掉密碼雜湊後帳密比對邏輯依然正確。同樣受限於本機沒有瀏覽器工具，還沒有實際在瀏覽器裡點過新的登入流程，建議之後用 `wrangler dev` 搭配上方設定步驟實際測一次。
+
+### 2026-07-17（第十二次追加：修正 wrangler.json 設定衝突，指令改回不帶 `pages` 的版本）
+
+使用者依照上一輪的指示執行 `wrangler secret put ADMIN_USERNAME`，跳出「It looks like you've run a Workers-specific command in a Pages project」錯誤，於是我當時判斷（錯誤地）這是 Pages 專案，把 README 全部改成 `wrangler pages secret put` / `wrangler pages deploy .`。使用者照做後，`wrangler pages secret put` 直接跳出更根本的錯誤：
+
+```text
+Configuration file cannot contain both "main" and "pages_build_output_dir" configuration keys.
+Configuration file for Pages projects does not support "main"
+Configuration file for Pages projects does not support "assets"
+```
+
+這才發現真正的問題：[wrangler.json](wrangler.json) 同時存在 `"main": "worker.js"`、`"assets": { "directory": "." }`（Workers 靜態資產專案的標準寫法）跟 `"pages_build_output_dir": "."`（Pages 專案專用），這兩組設定互斥，新版 wrangler（4.112.0）會直接擋下來拒絕執行。回頭看 `worker.js` 的實作（`export default { fetch(request, env) { ...; return env.ASSETS.fetch(request); } }`，透過 `main` + `assets` 綁定讀取靜態檔案），這其實從頭到尾就是一個 **Cloudflare Workers（含靜態資產）專案**，不是 Pages 專案；`pages_build_output_dir` 是設定檔裡多餘、衝突的欄位。
+
+- 調整 [wrangler.json](wrangler.json)：移除 `"pages_build_output_dir": "."`，只保留 `"main"` + `"assets"` 的 Workers 靜態資產寫法，設定檔不再自相矛盾。
+- 調整 [README.md](README.md)：把上一輪誤改成 `wrangler pages secret put` / `wrangler pages deploy .` / `wrangler pages dev .` 的地方全部改回不帶 `pages` 的原版指令（`wrangler secret put`、`wrangler deploy`、`wrangler dev`），並在「初始化指令」段落加註說明這是 Workers 專案、以及這次設定衝突的來龍去脈，避免以後又被同樣的錯誤訊息誤導。歷史版本歷程裡舊的 `wrangler pages dev .` 記錄予以保留（如實反映當時的操作紀錄），不回頭竄改。
+- 說明：這次沒有辦法讓我自己重現 wrangler CLI 的驗證錯誤（本機沒有登入 Cloudflare 帳號、也沒有安裝 wrangler），完全是根據使用者貼的錯誤截圖與訊息文字判斷根因；`wrangler.json` 本身是純 JSON，已確認格式正確（沒有多餘逗號、引號配對正確）。麻煩使用者這次先執行 `wrangler secret put ADMIN_USERNAME` 確認不會再跳出設定檔驗證錯誤，如果還有問題請把新的錯誤訊息貼給我。

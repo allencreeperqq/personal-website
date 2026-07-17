@@ -1,7 +1,6 @@
 {
   "name": "personal-website",
   "compatibility_date": "2026-07-16",
-  "pages_build_output_dir": ".",
   "main": "worker.js",
   "assets": {
     "directory": "."
