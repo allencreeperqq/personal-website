@@ -15,6 +15,7 @@ import {
 import { listPosts, getPostBySlug, createPost, updatePost, deletePost } from "./server/posts.js";
 import { handleUpload, handleFileGet, getStorageStatus } from "./server/uploads.js";
 import { listCommentsForAdmin, listCommentPageKeys, setCommentVisibility } from "./server/comments-admin.js";
+import { getAllSiteContent, setSiteContent } from "./server/site-content.js";
 
 let schemaReady;
 
@@ -373,6 +374,27 @@ async function handleAdminStorage(request, env) {
   return jsonResponse({ ok: true, ...status });
 }
 
+// ---- 首頁文字區塊（最近在做甚麼 / 自我介紹）----
+
+async function handleSiteContentGet(request, env) {
+  if (!env.DB) return jsonResponse({ ok: false, error: "D1 綁定尚未設定。" }, 503);
+  const content = await getAllSiteContent(env);
+  return jsonResponse({ ok: true, content });
+}
+
+async function handleSiteContentUpdate(request, env, key) {
+  const denied = await handleAdminMutation(request, env);
+  if (denied) return denied;
+
+  try {
+    const body = await readJson(request);
+    const saved = await setSiteContent(env, key, body?.content);
+    return jsonResponse({ ok: true, ...saved });
+  } catch (error) {
+    return jsonResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }, 400);
+  }
+}
+
 // ---- Admin：留言管理 ----
 
 async function handleAdminCommentsList(request, env) {
@@ -457,6 +479,15 @@ async function router(request, env) {
   }
   if (adminPostMatch && method === "DELETE") {
     return handlePostDelete(request, env, adminPostMatch.slug);
+  }
+
+  if (pathname === "/api/site-content" && method === "GET") {
+    return handleSiteContentGet(request, env);
+  }
+
+  const siteContentMatch = matchRoute("/api/admin/site-content/:key", pathname);
+  if (siteContentMatch && method === "PUT") {
+    return handleSiteContentUpdate(request, env, siteContentMatch.key);
   }
 
   if (pathname === "/api/admin/uploads" && method === "POST") {

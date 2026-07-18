@@ -1009,8 +1009,6 @@
     ];
     const BG_ROTATION_INTERVAL_MS = 20000;
 
-    const RECENT_DOING_TEXT_PATH = "content/recent-doing.txt";
-    const SELF_INTRO_TEXT_PATH = "content/self-intro.txt";
     const RECENT_BLOG_LIMIT = 4;
     const POSTS_PER_PAGE = 8;
 
@@ -1037,6 +1035,8 @@
       });
     }
 
+    // 「最近在做甚麼」與「自我介紹」改存在 D1（admin 後台可編輯）；
+    // API 沒回應或內容為空字串時，維持頁面上寫死的預設文字。
     async function loadEditableTextSections() {
       if (window.location.protocol === "file:") {
         return;
@@ -1046,21 +1046,22 @@
       const selfIntro = document.getElementById("self-intro-text");
 
       try {
-        const [recentRes, introRes] = await Promise.all([
-          fetch(RECENT_DOING_TEXT_PATH, { cache: "no-store" }),
-          fetch(SELF_INTRO_TEXT_PATH, { cache: "no-store" })
-        ]);
+        const response = await fetch("/api/site-content", { cache: "no-store" });
+        if (!response.ok) return;
 
-        if (recentList && recentRes.ok) {
-          const recentText = await recentRes.text();
+        const data = await response.json();
+        if (!data?.ok || !data.content) return;
+
+        const recentText = String(data.content["recent-doing"] || "");
+        if (recentList && recentText.trim()) {
           const items = recentText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
           if (items.length) {
             recentList.innerHTML = items.map((item) => `<li>${linkifyText(item)}</li>`).join("");
           }
         }
 
-        if (selfIntro && introRes.ok) {
-          const introText = await introRes.text();
+        const introText = String(data.content["self-intro"] || "");
+        if (selfIntro && introText.trim()) {
           const paragraphs = introText
             .split(/\r?\n\s*\r?\n/)
             .map((part) => part.trim())
@@ -1076,7 +1077,7 @@
           }
         }
       } catch (error) {
-        console.warn("文字區塊 txt 載入失敗，使用預設內容", error);
+        console.warn("文字區塊載入失敗，使用預設內容", error);
       }
     }
 

@@ -446,3 +446,15 @@ Executing user deploy command: npx wrangler versions upload
 - 說明：因為停止上傳只鎖「新增檔案」這一個動作，網站首頁、既有文章、留言、按讚等其他功能完全不受影響，符合使用者確認過的「只停止新的上傳功能」選項。
 
 **整體測試總結**：這一輪新增/修改的邏輯（D1 migration SQL、R2 quota 檢查、`GET /api/admin/storage`）都用本機模擬環境（`node:sqlite` 記憶體資料庫 + 假的 D1/R2 物件）實際跑過，不是只看程式碼推測；連同先前累積的測試，目前總共有 40+ 項自動化測試涵蓋登入、CSRF 拿掉後的行為、文章 CRUD、留言管理、markdown 渲染跳脫、上傳驗證、R2 quota 五大塊。仍然沒有連到使用者真實的 Cloudflare 帳號，`migrations/0003_seed_legacy_posts.sql` 需要使用者手動執行 `wrangler d1 migrations apply personal_website` 才會真的把舊文章寫進正式的 D1 資料庫；在那之前，首頁的「全部貼文列表」會因為 D1 裡還沒有資料而顯示空白，這是預期中的過渡狀態，跑完 migration 就會恢復正常。
+
+### 2026-07-19（第十九次追加：admin 後台可直接編輯首頁「最近在做甚麼」與「自我介紹」）
+
+使用者需求：在 admin 後台新增可以更改首頁「最近在做甚麼」、「自我介紹」兩塊文字的功能。順帶發現一個既有問題：[index.html](index.html) 原本會 fetch `content/recent-doing.txt` 與 `content/self-intro.txt`，但這兩個檔案（連同 `content/` 資料夾）根本不存在，所以那段載入邏輯從來沒生效過，首頁一直顯示的是寫死的預設文字。這次把這條路整個改成走 D1，跟文章系統同一套架構：
+
+- 新增 [server/site-content.js](server/site-content.js)：D1 新資料表 `site_content`（`key` 主鍵 + `content` + `updated_at`，跟其他表一樣用 `CREATE TABLE IF NOT EXISTS` 執行期自動補齊，不用手動跑 migration）。key 用白名單限制只有 `recent-doing` 與 `self-intro` 兩個，內容上限 4000 字，允許存空字串（代表「清掉自訂內容、回到頁面內建預設文字」）。
+- 調整 [worker.js](worker.js)：新增兩條路由——`GET /api/site-content`（公開，一次回傳全部區塊）與 `PUT /api/admin/site-content/:key`（需登入，沿用既有的 `handleAdminMutation` 檢查）。
+- 調整 [index.html](index.html)：`loadEditableTextSections()` 改成呼叫 `GET /api/site-content`；API 失敗或內容為空字串時維持頁面寫死的預設文字，行為跟原本的 txt fallback 一致。渲染規則不變：「最近在做甚麼」一行一項顯示成清單、「自我介紹」空一行分段、網址自動轉成連結（沿用既有的 `escapeHtml` + `linkifyText`，內容不會被當 HTML 執行）。
+- 調整 [blog/admin/editor.html](blog/admin/editor.html)：「文章管理」下方新增「首頁文字區塊」面板，左右兩個 textarea（各自標明輸入格式），一顆「儲存首頁文字」按鈕同時儲存兩塊；頁面載入時會自動抓目前 D1 裡的內容進來，儲存結果（成功/失敗）顯示在按鈕旁。兩個欄位一開始會是空的（因為 D1 還沒存過），留空儲存就是繼續用首頁內建的預設文字；想開始自訂時直接輸入新內容儲存即可。
+- 新增 [.assetsignore](.assetsignore)：把 `.wrangler`、`.git`、`migrations` 等內部檔案排除在 Workers 靜態資產之外，避免被當成公開檔案部署。
+- 測試：沿用專案慣例，用 `node:sqlite` 記憶體資料庫模擬 D1 直接打 `worker.js` 的路由，共 15 項全部通過——涵蓋預設空值、未登入 PUT 被 401 擋下、登入後儲存兩塊、多行內容完整讀回、重複儲存覆蓋（UPSERT）、存空字串清除、非白名單 key 回 400、既有 `/api/posts` 路由不受影響。
+- 已知限制：本機 `wrangler dev` 有「assets 目錄設為 `.` 導致 `.wrangler` 暫存檔變動觸發無限 reload」的問題（加 `.assetsignore` 也沒解決，watcher 似乎不吃這份設定），所以這次沒辦法用 wrangler 本機模擬環境實測，只有跑上述的模擬物件測試；部署到 Cloudflare 後建議實際跑一次「登入後台 → 修改兩塊文字 → 儲存 → 重新整理首頁」流程確認。

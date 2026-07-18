@@ -334,6 +334,24 @@
     </section>
 
     <section class="panel">
+      <h2>首頁文字區塊</h2>
+      <div class="editor-grid">
+        <label class="field">
+          <span>最近在做甚麼（一行一項，會顯示成清單）</span>
+          <textarea id="site-recent-doing" maxlength="4000" style="min-height:160px;" placeholder="留空會顯示首頁內建的預設內容"></textarea>
+        </label>
+        <label class="field">
+          <span>自我介紹（空一行分段，網址會自動變成連結）</span>
+          <textarea id="site-self-intro" maxlength="4000" style="min-height:160px;" placeholder="留空會顯示首頁內建的預設內容"></textarea>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-primary" id="save-site-content-btn">儲存首頁文字</button>
+        <p class="form-feedback" id="site-content-feedback"></p>
+      </div>
+    </section>
+
+    <section class="panel">
       <h2>留言管理</h2>
       <div class="comment-controls">
         <label class="field" style="margin:0;">
@@ -647,6 +665,48 @@
       datalist.innerHTML = categories.map((c) => `<option value="${c}"></option>`).join("");
     }
 
+    function setSiteContentFeedback(message, isError) {
+      const el = document.getElementById("site-content-feedback");
+      el.textContent = message || "";
+      el.classList.toggle("is-error", Boolean(isError));
+    }
+
+    async function loadSiteContent() {
+      try {
+        const data = await apiFetch("/api/site-content");
+        document.getElementById("site-recent-doing").value = data.content?.["recent-doing"] || "";
+        document.getElementById("site-self-intro").value = data.content?.["self-intro"] || "";
+      } catch (error) {
+        setSiteContentFeedback(`首頁文字讀取失敗：${error.message}`, true);
+      }
+    }
+
+    async function saveSiteContent() {
+      const saveBtn = document.getElementById("save-site-content-btn");
+      saveBtn.disabled = true;
+      setSiteContentFeedback("儲存中...");
+
+      const payloads = [
+        ["recent-doing", document.getElementById("site-recent-doing").value],
+        ["self-intro", document.getElementById("site-self-intro").value]
+      ];
+
+      try {
+        for (const [key, content] of payloads) {
+          await apiFetch(`/api/admin/site-content/${encodeURIComponent(key)}`, {
+            method: "PUT",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ content })
+          });
+        }
+        setSiteContentFeedback("已儲存，首頁重新整理後就會看到新內容。");
+      } catch (error) {
+        setSiteContentFeedback(error.message, true);
+      } finally {
+        saveBtn.disabled = false;
+      }
+    }
+
     async function loadCommentPageKeys() {
       const select = document.getElementById("comment-page-select");
       try {
@@ -773,6 +833,8 @@
       }
     });
 
+    document.getElementById("save-site-content-btn").addEventListener("click", saveSiteContent);
+
     document.getElementById("comment-page-select").addEventListener("change", (event) => {
       loadCommentsForKey(event.target.value);
     });
@@ -792,6 +854,7 @@
       resetForm();
       await refreshPostList();
       await refreshCategoryOptions();
+      await loadSiteContent();
       await loadCommentPageKeys();
       await refreshStorageStatus();
     })();
